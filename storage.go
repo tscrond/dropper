@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 
 	"cloud.google.com/go/storage"
+	"google.golang.org/api/option"
 )
 
 type GCSBucketHandler struct {
@@ -47,7 +48,7 @@ func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *FileData)
 		return nil
 	}
 
-	client, err := storage.NewClient(ctx)
+	client, err := storage.NewClient(ctx, option.WithCredentialsFile(b.ServiceAccountKeyPath))
 	if err != nil {
 		log.Println("Error initializing client:", err)
 		return err
