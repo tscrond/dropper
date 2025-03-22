@@ -28,9 +28,8 @@ func (s *APIServer) Start() {
 	r.Use(middleware.Logger)
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173"},
-		AllowedMethods:   []string{"POST", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "multipart/form-data"},
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowCredentials: true,
 	})
 
