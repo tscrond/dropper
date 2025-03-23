@@ -37,7 +37,7 @@ func (s *APIServer) Start() {
 	r.Handle("/upload", http.HandlerFunc(s.uploadHandler))
 
 	log.Printf("Listening on %s\n", s.listenPort)
-	http.ListenAndServe(s.listenPort, r)
+	http.ListenAndServe("0.0.0.0"+s.listenPort, r)
 }
 
 func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
