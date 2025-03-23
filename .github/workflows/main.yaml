@@ -15,8 +15,8 @@ jobs:
         packages: write
         id-token: write
     with:
-      image-name-dockerhub: bobaklabs/dropper-frontend
-      image-name-github: tscrond/dropper-frontend
+      image-name-dockerhub: bobaklabs/dropper-backend
+      image-name-github: tscrond/dropper-backend
     secrets:
         docker-hub-username: ${{ secrets.DOCKERHUB_USERNAME }}
         docker-hub-token: ${{ secrets.DOCKERHUB_TOKEN }}
