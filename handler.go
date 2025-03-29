@@ -39,7 +39,7 @@ func (s *APIServer) Start() {
 
 	r.Use(c.Handler)
 
-	r.Handle("/upload", c.Handler(http.HandlerFunc(s.uploadHandler)))
+	r.Handle("/upload", s.AuthMiddleware(c.Handler(http.HandlerFunc(s.uploadHandler))))
 
 	r.Handle("/auth/callback", c.Handler(http.HandlerFunc(s.authCallback)))
 
@@ -84,17 +84,3 @@ func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "Files uploaded successfully: %+v\n", fileData.requestHeaders.Filename)
 }
-
-var userTemplate = `
-<p><a href="/logout/{{.Provider}}">logout</a></p>
-<p>Name: {{.Name}} [{{.LastName}}, {{.FirstName}}]</p>
-<p>Email: {{.Email}}</p>
-<p>NickName: {{.NickName}}</p>
-<p>Location: {{.Location}}</p>
-<p>AvatarURL: {{.AvatarURL}} <img src="{{.AvatarURL}}"></p>
-<p>Description: {{.Description}}</p>
-<p>UserID: {{.UserID}}</p>
-<p>AccessToken: {{.AccessToken}}</p>
-<p>ExpiresAt: {{.ExpiresAt}}</p>
-<p>RefreshToken: {{.RefreshToken}}</p>
-`

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"golang.org/x/oauth2"
@@ -29,7 +30,7 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(t)
+	// fmt.Println(t)
 
 	// client := s.OAuthConfig.Client(context.Background(), t)
 	client := s.OAuthConfig.Client(context.Background(), t)
@@ -77,15 +78,71 @@ type GoAuth struct {
 	Locale     string `json:"locale"`
 }
 
+//	{
+//		"azp": "asodfkasdofkao-rasdkfkaosdfpasodfkg.apps.googleusercontent.com",
+//		"aud": "asodfkasdofkao-rasdkfkaosdfpasodfkg.apps.googleusercontent.com",
+//		"sub": "1065436339302349807",
+//		"scope": "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid",
+//		"exp": "1111432532",
+//		"expires_in": "4432",
+//		"email": "abc.bca@gmail.com",
+//		"email_verified": "true",
+//		"access_type": "offline"
+//	  }
+
+type VerifiedUserInfo struct {
+	Azp           string `json:"azp"`
+	Aud           string `json:"aud"`
+	Sub           string `json:"sub"`
+	Scope         string `json:"scope"`
+	Exp           string `json:"exp"`
+	ExpiresIn     string `json:"expires_in"`
+	Email         string `json:"email"`
+	EmailVerified string `json:"email_verified"`
+	AccessType    string `json:"access_type"`
+}
+
 func (s *APIServer) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_id")
+		fmt.Println(cookie)
 		if err != nil || cookie.Value == "" {
 			http.Error(w, "Unauthorized", http.StatusForbidden)
 			return
 		}
-		next.ServeHTTP(w, r)
+
+		valid, userInfo := s.verifyToken(cookie.Value)
+		if !valid {
+			http.Error(w, "Unauthorized (invalid or expired session)", http.StatusForbidden)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "user", userInfo)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func (s *APIServer) verifyToken(cookieValue string) (bool, *VerifiedUserInfo) {
+	resp, err := http.Get(fmt.Sprintf("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%s", cookieValue))
+	if err != nil {
+		log.Println(err)
+		return false, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Println("status code not OK")
+		return false, nil
+	}
+
+	var userInfo VerifiedUserInfo
+
+	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
+		log.Println("cannot decode user info")
+		return false, nil
+	}
+
+	return true, &userInfo
 }
 
 func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
@@ -97,14 +154,27 @@ func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
 			"authenticated": false,
 		}
 		JSON(w, response)
-		// http.Error(w, "Unauthorized", http.StatusForbidden)
 		return
 	}
-	// no safe logic at all - lets in every token != "" - TODO
+
+	fmt.Println(cookie.Value)
+
+	valid, userInfo := s.verifyToken(cookie.Value)
+	if !valid {
+		response := map[string]interface{}{
+			"response":      "access_denied",
+			"code":          http.StatusForbidden,
+			"authenticated": false,
+		}
+		JSON(w, response)
+		return
+	}
+
 	response := map[string]interface{}{
 		"response":      "access_granted",
 		"code":          http.StatusOK,
 		"authenticated": true,
+		"user_info":     userInfo,
 	}
 	JSON(w, response)
 }
