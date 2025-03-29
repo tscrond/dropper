@@ -64,7 +64,7 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, sessionCookie)
 
-	http.Redirect(w, r, "http://localhost:5173/", http.StatusTemporaryRedirect)
+	http.Redirect(w, r, s.frontendEndpoint, http.StatusTemporaryRedirect)
 }
 
 type GoAuth struct {

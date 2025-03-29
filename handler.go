@@ -13,16 +13,18 @@ import (
 )
 
 type APIServer struct {
-	listenPort    string
-	bucketHandler *GCSBucketHandler
-	OAuthConfig   *oauth2.Config
+	listenPort       string
+	bucketHandler    *GCSBucketHandler
+	OAuthConfig      *oauth2.Config
+	frontendEndpoint string
 }
 
-func NewAPIServer(lp string, bh *GCSBucketHandler, oauth2conf *oauth2.Config) *APIServer {
+func NewAPIServer(lp string, fe string, bh *GCSBucketHandler, oauth2conf *oauth2.Config) *APIServer {
 	return &APIServer{
-		listenPort:    lp,
-		bucketHandler: bh,
-		OAuthConfig:   oauth2conf,
+		listenPort:       lp,
+		frontendEndpoint: fe,
+		bucketHandler:    bh,
+		OAuthConfig:      oauth2conf,
 	}
 }
 
@@ -32,7 +34,7 @@ func (s *APIServer) Start() {
 	r.Use(middleware.Logger)
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173"},
+		AllowedOrigins:   []string{s.frontendEndpoint},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowCredentials: true,
 	})

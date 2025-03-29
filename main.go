@@ -13,12 +13,13 @@ func main() {
 	svcaccountPath := os.Getenv("GCS_SVCACCOUNT_PATH")
 	clientId := os.Getenv("GOOGLE_CLIENT_ID")
 	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+	frontendEndpoint := os.Getenv("FRONTEND_ENDPOINT")
 
 	log.Println(bucketName, svcaccountPath)
 
 	bucketHandler := NewGCSBucketHandler(svcaccountPath, bucketName)
 
-	s := NewAPIServer(":3000", bucketHandler, &oauth2.Config{
+	s := NewAPIServer(":3000", frontendEndpoint, bucketHandler, &oauth2.Config{
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		RedirectURL:  "http://localhost:3000/auth/callback",
