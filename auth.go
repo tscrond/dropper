@@ -13,7 +13,7 @@ import (
 const (
 	key    = "asdfasdfasdf"
 	MaxAge = 86400 * 30
-	IsProd = false
+	IsProd = true
 )
 
 func (s *APIServer) oauthHandler(w http.ResponseWriter, r *http.Request) {
