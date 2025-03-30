@@ -36,18 +36,19 @@ func (s *APIServer) Start() {
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{s.frontendEndpoint},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
 	})
 
 	r.Use(c.Handler)
 
-	r.Handle("/upload", s.AuthMiddleware(c.Handler(http.HandlerFunc(s.uploadHandler))))
+	r.Handle("/upload", s.AuthMiddleware(http.HandlerFunc(s.uploadHandler)))
 
-	r.Handle("/auth/callback", c.Handler(http.HandlerFunc(s.authCallback)))
+	r.Handle("/auth/callback", http.HandlerFunc(s.authCallback))
 
-	r.Handle("/auth/oauth", c.Handler(http.HandlerFunc(s.oauthHandler)))
+	r.Handle("/auth/oauth", http.HandlerFunc(s.oauthHandler))
 
-	r.Handle("/auth/is_valid", c.Handler(http.HandlerFunc(s.isValid)))
+	r.Handle("/auth/is_valid", http.HandlerFunc(s.isValid))
 
 	// r.Handle("/logout/{provider}", c.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// 	gothic.Logout(w, r)

@@ -18,6 +18,7 @@ func main() {
 	backendEndpoint := os.Getenv("BACKEND_ENDPOINT")
 
 	log.Println(bucketName, svcaccountPath)
+	log.Printf("%s", fmt.Sprintf("%s/auth/callback", backendEndpoint))
 
 	bucketHandler := NewGCSBucketHandler(svcaccountPath, bucketName)
 
