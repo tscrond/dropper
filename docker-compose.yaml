@@ -1,14 +1,14 @@
 services:
   frontend:
-    image: bobaklabs/dropper-frontend:latest
+    image: bobaklabs/dropper-frontend:v0.0.1
     container_name: frontend
     ports:
       - 8000:8000/tcp
     environment:
       - BACKEND_ENDPOINT="http://localhost:3000"
-  
+
   backend:
-    image: bobaklabs/dropper-backend:latest
+    image: bobaklabs/dropper-backend:v0.0.1
     container_name: backend
     ports:
       - 3000:3000/tcp

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -14,6 +15,7 @@ func main() {
 	clientId := os.Getenv("GOOGLE_CLIENT_ID")
 	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
 	frontendEndpoint := os.Getenv("FRONTEND_ENDPOINT")
+	backendEndpoint := os.Getenv("BACKEND_ENDPOINT")
 
 	log.Println(bucketName, svcaccountPath)
 
@@ -22,7 +24,7 @@ func main() {
 	s := NewAPIServer(":3000", frontendEndpoint, bucketHandler, &oauth2.Config{
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
-		RedirectURL:  "http://localhost:3000/auth/callback",
+		RedirectURL:  fmt.Sprintf("%s/auth/callback", backendEndpoint),
 		Scopes:       []string{"email", "profile"},
 		Endpoint:     google.Endpoint,
 	})
