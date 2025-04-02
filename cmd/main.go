@@ -5,8 +5,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/markbates/goth/providers/google"
+	"github.com/tscrond/dropper/internal/api"
+	"github.com/tscrond/dropper/internal/gcs"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 func main() {
@@ -20,9 +22,9 @@ func main() {
 	log.Println(bucketName, svcaccountPath)
 	log.Printf("%s", fmt.Sprintf("%s/auth/callback", backendEndpoint))
 
-	bucketHandler := NewGCSBucketHandler(svcaccountPath, bucketName)
+	bucketHandler := gcs.NewGCSBucketHandler(svcaccountPath, bucketName)
 
-	s := NewAPIServer(":3000", frontendEndpoint, bucketHandler, &oauth2.Config{
+	s := api.NewAPIServer(":3000", frontendEndpoint, bucketHandler, &oauth2.Config{
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		RedirectURL:  fmt.Sprintf("%s/auth/callback", backendEndpoint),
