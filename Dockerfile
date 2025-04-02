@@ -6,7 +6,7 @@ COPY . .
 
 RUN go mod download
 
-RUN go build -o /dropper
+RUN go build -o /dropper /dropper/cmd/*
 
 EXPOSE 3000
 
