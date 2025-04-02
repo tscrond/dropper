@@ -2,7 +2,8 @@ package userdata
 
 type ContextKey string
 
-const UserContextKey ContextKey = "user"
+const VerifiedUserContextKey ContextKey = "verified_user"
+const AuthorizedUserContextKey ContextKey = "authorized_user"
 
 // Info gathered after successful oauth2 callback
 type AuthorizedUserInfo struct {
