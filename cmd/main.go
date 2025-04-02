@@ -16,13 +16,14 @@ func main() {
 	svcaccountPath := os.Getenv("GCS_SVCACCOUNT_PATH")
 	clientId := os.Getenv("GOOGLE_CLIENT_ID")
 	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+	googleProjectID := os.Getenv("GOOGLE_PROJECT_ID")
 	frontendEndpoint := os.Getenv("FRONTEND_ENDPOINT")
 	backendEndpoint := os.Getenv("BACKEND_ENDPOINT")
 
 	log.Println(bucketName, svcaccountPath)
 	log.Printf("%s", fmt.Sprintf("%s/auth/callback", backendEndpoint))
 
-	bucketHandler := gcs.NewGCSBucketHandler(svcaccountPath, bucketName)
+	bucketHandler := gcs.NewGCSBucketHandler(svcaccountPath, bucketName, googleProjectID)
 
 	s := api.NewAPIServer(":3000", frontendEndpoint, bucketHandler, &oauth2.Config{
 		ClientID:     clientId,

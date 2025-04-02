@@ -81,20 +81,23 @@ func (s *APIServer) authMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		valid, _ := s.verifyToken(cookie.Value)
+		valid, verifiedUserData := s.verifyToken(cookie.Value)
 		if !valid {
 			http.Error(w, "Unauthorized (invalid or expired session)", http.StatusForbidden)
 			return
 		}
+		log.Println("verified user:", verifiedUserData)
 
 		userInfo, err := s.fetchUserInfo(cookie.Value)
 		if err != nil {
-			http.Error(w, "Unauthorized: Invalid token", http.StatusForbidden)
+			http.Error(w, "Could not fetch logged user info", http.StatusForbidden)
 			return
 		}
-		fmt.Println(userInfo)
+		fmt.Println("logged user info::", userInfo)
 
-		ctx := context.WithValue(r.Context(), userdata.UserContextKey, userInfo)
+		ctx := context.WithValue(r.Context(), userdata.VerifiedUserContextKey, verifiedUserData)
+		ctx = context.WithValue(ctx, userdata.AuthorizedUserContextKey, userInfo)
+
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -108,14 +111,18 @@ func (s *APIServer) verifyToken(cookieValue string) (bool, *userdata.VerifiedUse
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Println("status code not OK")
+		log.Println("Token verification failed, invalid token")
 		return false, nil
 	}
 
 	var userInfo userdata.VerifiedUserInfo
-
 	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
 		log.Println("cannot decode user info")
+		return false, nil
+	}
+
+	if userInfo.Email == "" || userInfo.Sub == "" {
+		log.Println("Invalid token: Missing email or user ID")
 		return false, nil
 	}
 
@@ -202,6 +209,7 @@ func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
 			"response":      "bad_request",
 			"code":          http.StatusBadRequest,
 			"authenticated": false,
+			"user_info":     nil,
 		})
 		return
 	}
@@ -211,6 +219,7 @@ func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
 			"response":      "access_denied",
 			"code":          http.StatusForbidden,
 			"authenticated": false,
+			"user_info":     nil,
 		}
 		JSON(w, response)
 		return
@@ -224,6 +233,7 @@ func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
 			"response":      "access_denied",
 			"code":          http.StatusForbidden,
 			"authenticated": false,
+			"user_info":     nil,
 		}
 		JSON(w, response)
 		return

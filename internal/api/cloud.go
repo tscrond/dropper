@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/tscrond/dropper/internal/filedata"
+	"github.com/tscrond/dropper/internal/userdata"
 )
 
 func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
@@ -17,7 +18,19 @@ func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	ctx := context.Background()
+
+	verifiedUserData, ok := r.Context().Value(userdata.VerifiedUserContextKey).(*userdata.VerifiedUserInfo)
+	if !ok {
+		http.Error(w, "Failed to retrieve verified user data", http.StatusForbidden)
+		return
+	}
+
+	authorizedUserData, ok := r.Context().Value(userdata.AuthorizedUserContextKey).(*userdata.AuthorizedUserInfo)
+	if !ok {
+		http.Error(w, "Failed to retrieve authorized user data", http.StatusForbidden)
+		return
+	}
+	fmt.Println("Authorized User:", authorizedUserData)
 
 	// Get file from request
 	file, header, err := r.FormFile("file")
@@ -35,6 +48,10 @@ func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Invalid file data")
 		return
 	}
+
+	ctx := r.Context()
+	ctx = context.WithValue(ctx, userdata.VerifiedUserContextKey, verifiedUserData)
+	ctx = context.WithValue(ctx, userdata.AuthorizedUserContextKey, authorizedUserData)
 
 	if err := s.bucketHandler.SendFileToBucket(ctx, fileData); err != nil {
 		http.Error(w, "Failed to send file to bucket", http.StatusInternalServerError)
