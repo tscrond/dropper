@@ -24,6 +24,10 @@ func (s *APIServer) oauthHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
+	if code == "" {
+		http.Error(w, "Missing authorization code", http.StatusBadRequest)
+		return
+	}
 
 	t, err := s.OAuthConfig.Exchange(context.Background(), code)
 	if err != nil {
@@ -57,7 +61,7 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Store user information in a session (cookie)
 	sessionCookie := &http.Cookie{
-		Name:     "session_id",
+		Name:     "access_token",
 		Value:    fmt.Sprintf("%s", t.AccessToken),
 		HttpOnly: true,
 		Secure:   IsProd,
@@ -70,21 +74,24 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 
 func (s *APIServer) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("session_id")
+		cookie, err := r.Cookie("access_token")
 		fmt.Println(cookie)
 		if err != nil || cookie.Value == "" {
 			http.Error(w, "Unauthorized", http.StatusForbidden)
 			return
 		}
 
-		valid, userInfo := s.verifyToken(cookie.Value)
+		valid, _ := s.verifyToken(cookie.Value)
 		if !valid {
 			http.Error(w, "Unauthorized (invalid or expired session)", http.StatusForbidden)
 			return
 		}
 
-		// var accessToken string
-		// userInfo, err := s.fetchUserInfo(accessToken)
+		userInfo, err := s.fetchUserInfo(cookie.Value)
+		if err != nil {
+			http.Error(w, "Unauthorized: Invalid token", http.StatusForbidden)
+			return
+		}
 		fmt.Println(userInfo)
 
 		ctx := context.WithValue(r.Context(), userdata.UserContextKey, userInfo)
@@ -117,8 +124,8 @@ func (s *APIServer) verifyToken(cookieValue string) (bool, *userdata.VerifiedUse
 
 // Revoke OAuth2 token and expire session cookie
 func (s *APIServer) logout(w http.ResponseWriter, r *http.Request) {
-	// Check if session_id cookie exists
-	cookie, err := r.Cookie("session_id")
+	// Check if access_token cookie exists
+	cookie, err := r.Cookie("access_token")
 	if err != nil {
 		JSON(w, map[string]interface{}{
 			"response":          "cookie_not_found",
@@ -171,7 +178,7 @@ func (s *APIServer) logout(w http.ResponseWriter, r *http.Request) {
 
 	// Expire session cookie
 	expiredCookie := &http.Cookie{
-		Name:     "session_id",
+		Name:     "access_token",
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
@@ -198,7 +205,7 @@ func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	cookie, err := r.Cookie("session_id")
+	cookie, err := r.Cookie("access_token")
 	if err != nil || cookie.Value == "" {
 		response := map[string]interface{}{
 			"response":      "access_denied",
@@ -229,6 +236,32 @@ func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
 		"user_info":     userInfo,
 	}
 	JSON(w, response)
+}
+
+func (s *APIServer) fetchUserInfo(accessToken string) (*userdata.AuthorizedUserInfo, error) {
+	// Call Google’s userinfo API
+	req, err := http.NewRequest("GET", "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add Authorization header
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Decode JSON response
+	var user userdata.AuthorizedUserInfo
+	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func JSON(w http.ResponseWriter, v any) {

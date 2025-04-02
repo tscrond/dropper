@@ -9,7 +9,7 @@ import (
 
 func (s *APIServer) getUserData(w http.ResponseWriter, r *http.Request) {
 
-	userData, ok := r.Context().Value(userdata.UserContextKey).(*userdata.VerifiedUserInfo)
+	userData, ok := r.Context().Value(userdata.UserContextKey).(*userdata.AuthorizedUserInfo)
 	fmt.Println(userData)
 	if !ok {
 		JSON(w, map[string]interface{}{
