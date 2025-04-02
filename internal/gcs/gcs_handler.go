@@ -1,36 +1,18 @@
-package main
+package gcs
 
 import (
 	"context"
 	"io"
 	"log"
-	"mime/multipart"
 
 	"cloud.google.com/go/storage"
+	"github.com/tscrond/dropper/internal/filedata"
 	"google.golang.org/api/option"
 )
 
 type GCSBucketHandler struct {
 	ServiceAccountKeyPath string
 	BucketName            string
-}
-
-type FileData struct {
-	multipartFile  multipart.File
-	requestHeaders *multipart.FileHeader
-}
-
-func NewFileData(multipartFile multipart.File, requestHeaders *multipart.FileHeader) *FileData {
-
-	// if requestHeaders != nil {
-	// 	log.Println("Request headers are empty")
-	// 	return nil
-	// }
-
-	return &FileData{
-		multipartFile:  multipartFile,
-		requestHeaders: requestHeaders,
-	}
 }
 
 func NewGCSBucketHandler(svcaccountPath, bucketName string) *GCSBucketHandler {
@@ -42,7 +24,7 @@ func NewGCSBucketHandler(svcaccountPath, bucketName string) *GCSBucketHandler {
 }
 
 // Handler that processes a single file per request
-func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *FileData) error {
+func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *filedata.FileData) error {
 	if data == nil {
 		log.Println("Data for bucket operation is empty")
 		return nil
@@ -55,10 +37,10 @@ func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *FileData)
 	}
 	defer client.Close()
 
-	fileName := data.requestHeaders.Filename
+	fileName := data.RequestHeaders.Filename
 
 	writer := client.Bucket(b.BucketName).Object(fileName).NewWriter(ctx)
-	if _, err := io.Copy(writer, data.multipartFile); err != nil {
+	if _, err := io.Copy(writer, data.MultipartFile); err != nil {
 		log.Println("Error uploading file")
 		return err
 	}
