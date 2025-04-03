@@ -6,7 +6,7 @@ COPY . .
 
 RUN go mod download
 
-RUN go build -o /dropper /dropper/cmd/*
+RUN go build -o /dropper/dropper /dropper/cmd
 
 EXPOSE 3000
 
@@ -14,5 +14,6 @@ FROM golang:1.24.1-alpine
 
 WORKDIR /dropper
 
-COPY --from=builder /dropper /dropper
+COPY --from=builder /dropper/dropper /dropper/dropper
+
 CMD [ "/dropper/dropper" ]
