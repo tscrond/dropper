@@ -1,20 +1,22 @@
 services:
   frontend:
-    image: bobaklabs/dropper-frontend:v0.0.1
+    image: local/dropper-frontend
     container_name: frontend
     ports:
       - 8000:8000/tcp
     environment:
-      - BACKEND_ENDPOINT="http://localhost:3000"
+      - BACKEND_ENDPOINT=http://localhost:3000
 
   backend:
-    image: bobaklabs/dropper-backend:v0.0.1
+    image: local/dropper-backend
     container_name: backend
+    restart: always
     ports:
       - 3000:3000/tcp
     environment:
-      - FRONTEND_ENDPOINT="http://localhost:8000"
-      - GCS_SVCACCOUNT_PATH="/config/bucket-auth.json"
+      - FRONTEND_ENDPOINT=http://localhost:8000
+      - BACKEND_ENDPOINT=http://localhost:3000
+      - GOOGLE_APPLICATION_CREDENTIALS=/config/bucket-auth.json
       - GCS_BUCKET_NAME=${GCS_BUCKET_NAME}
       - GOOGLE_COOKIE_SECRET=${GOOGLE_COOKIE_SECRET}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}

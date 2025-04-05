@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -28,6 +29,8 @@ func NewAPIServer(lp string, fe string, bh *gcs.GCSBucketHandler, oauth2conf *oa
 }
 
 func (s *APIServer) Start() {
+
+	fmt.Println("svc account path: ", s.bucketHandler.ServiceAccountKeyPath)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
+	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/tscrond/dropper/internal/filedata"
@@ -20,6 +22,19 @@ type GCSBucketHandler struct {
 }
 
 func NewGCSBucketHandler(svcaccountPath, bucketName, projId string) *GCSBucketHandler {
+
+	var err error
+	for i := 0; i < 5; i++ {
+		_, err = os.Stat(svcaccountPath)
+		if err == nil {
+			break
+		}
+		log.Printf("Retrying to find credentials file (%s): %v", svcaccountPath, err)
+		time.Sleep(1 * time.Second)
+	}
+	if err != nil {
+		log.Fatalf("Failed to find credentials file after retries: %v", err)
+	}
 
 	return &GCSBucketHandler{
 		ServiceAccountKeyPath: svcaccountPath,

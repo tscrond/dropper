@@ -13,7 +13,7 @@ import (
 
 func main() {
 	bucketName := os.Getenv("GCS_BUCKET_NAME")
-	svcaccountPath := os.Getenv("GCS_SVCACCOUNT_PATH")
+	svcaccountPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 	clientId := os.Getenv("GOOGLE_CLIENT_ID")
 	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
 	googleProjectID := os.Getenv("GOOGLE_PROJECT_ID")
