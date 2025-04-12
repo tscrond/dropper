@@ -2,6 +2,7 @@ package gcs
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -122,9 +123,35 @@ func (b *GCSBucketHandler) CreateBucketIfNotExists(ctx context.Context, userId s
 	return nil
 }
 
-func (b *GCSBucketHandler) GetUserBucketData(ctx context.Context, id string) (any, error) {
+func (b *GCSBucketHandler) getBucketAttrs(ctx context.Context, bucketName string) (*BucketData, error) {
+	bucketDataAttrs, err := b.Client.Bucket(bucketName).Attrs(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	bucketName := pkg.GetUserBucketName(b.BaseBucketName, id)
+	if err != nil {
+		return nil, fmt.Errorf("Bucket(%q).Attrs: %w", bucketName, err)
+	}
+	fmt.Printf("BucketName: %v\n", bucketDataAttrs.Name)
+	fmt.Printf("StorageClass: %v\n", bucketDataAttrs.StorageClass)
+	fmt.Printf("TimeCreated: %v\n", bucketDataAttrs.Created)
+	if bucketDataAttrs.Labels != nil {
+		fmt.Printf("\n\n\nLabels:")
+		for key, value := range bucketDataAttrs.Labels {
+			fmt.Printf("\t%v = %v\n", key, value)
+		}
+	}
+
+	return &BucketData{
+		BucketName:   bucketDataAttrs.Name,
+		StorageClass: bucketDataAttrs.StorageClass,
+		TimeCreated:  bucketDataAttrs.Created,
+		Labels:       bucketDataAttrs.Labels,
+	}, nil
+}
+
+func (b *GCSBucketHandler) getObjectsAttrs(ctx context.Context, bucketName string) ([]ObjectMedatata, error) {
+	var objects []ObjectMedatata
 	it := b.Client.Bucket(bucketName).Objects(ctx, nil)
 	for {
 		objAttrs, err := it.Next()
@@ -133,10 +160,42 @@ func (b *GCSBucketHandler) GetUserBucketData(ctx context.Context, id string) (an
 		}
 		if err != nil {
 			log.Println(err)
+			continue
 		}
-		log.Printf("%+v\n", objAttrs)
+		// log.Printf("%+v\n", objAttrs)
+
+		objects = append(objects, ObjectMedatata{
+			ContentType: objAttrs.ContentType,
+			Created:     objAttrs.Created,
+			Deleted:     objAttrs.Deleted,
+			Updated:     objAttrs.Updated,
+			MD5:         objAttrs.MD5,
+			Size:        objAttrs.Size,
+			MediaLink:   objAttrs.MediaLink,
+		})
 	}
-	return BucketData{}, nil
+
+	return objects, nil
+}
+func (b *GCSBucketHandler) GetUserBucketData(ctx context.Context, id string) (any, error) {
+
+	bucketName := pkg.GetUserBucketName(b.BaseBucketName, id)
+
+	bucketData, err := b.getBucketAttrs(ctx, bucketName)
+	if err != nil {
+		log.Println("error getting bucket metadata: ", err)
+		return nil, err
+	}
+
+	objects, err := b.getObjectsAttrs(ctx, bucketName)
+	if err != nil {
+		log.Println("error getting objects metadata: ", err)
+		return nil, err
+	}
+
+	bucketData.Objects = objects
+
+	return bucketData, nil
 }
 
 func (b *GCSBucketHandler) CreateBucket(ctx context.Context, fullBucketName, projectID string) error {

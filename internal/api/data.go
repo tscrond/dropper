@@ -43,7 +43,7 @@ func (s *APIServer) getUserBucketData(w http.ResponseWriter, r *http.Request) {
 	userData, ok := r.Context().Value(userdata.AuthorizedUserContextKey).(*userdata.AuthorizedUserInfo)
 	fmt.Println(userData)
 	if !ok {
-		JSON(w, map[string]interface{}{
+		JSON(w, map[string]any{
 			"response":  "access_denied",
 			"code":      http.StatusForbidden,
 			"user_data": nil,
