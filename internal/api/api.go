@@ -1,25 +1,24 @@
 package api
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
-	"github.com/tscrond/dropper/internal/gcs"
+	"github.com/tscrond/dropper/internal/cloud_storage/types"
 	"golang.org/x/oauth2"
 )
 
 type APIServer struct {
 	listenPort       string
-	bucketHandler    *gcs.GCSBucketHandler
+	bucketHandler    types.ObjectStorage
 	OAuthConfig      *oauth2.Config
 	frontendEndpoint string
 }
 
-func NewAPIServer(lp string, fe string, bh *gcs.GCSBucketHandler, oauth2conf *oauth2.Config) *APIServer {
+func NewAPIServer(lp string, fe string, bh types.ObjectStorage, oauth2conf *oauth2.Config) *APIServer {
 	return &APIServer{
 		listenPort:       lp,
 		frontendEndpoint: fe,
@@ -29,8 +28,6 @@ func NewAPIServer(lp string, fe string, bh *gcs.GCSBucketHandler, oauth2conf *oa
 }
 
 func (s *APIServer) Start() {
-
-	fmt.Println("svc account path: ", s.bucketHandler.ServiceAccountKeyPath)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -55,6 +52,7 @@ func (s *APIServer) Start() {
 
 	// data ops
 	r.Handle("/user_data", s.authMiddleware(http.HandlerFunc(s.getUserData)))
+	r.Handle("/bucket", s.authMiddleware(http.HandlerFunc(s.getUserBucketData)))
 
 	log.Printf("Listening on %s\n", s.listenPort)
 	http.ListenAndServe("0.0.0.0"+s.listenPort, r)

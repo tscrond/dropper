@@ -6,24 +6,27 @@ import (
 	"os"
 
 	"github.com/tscrond/dropper/internal/api"
-	"github.com/tscrond/dropper/internal/gcs"
+	"github.com/tscrond/dropper/internal/cloud_storage/factory"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
 
 func main() {
-	bucketName := os.Getenv("GCS_BUCKET_NAME")
-	svcaccountPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+
 	clientId := os.Getenv("GOOGLE_CLIENT_ID")
 	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
-	googleProjectID := os.Getenv("GOOGLE_PROJECT_ID")
 	frontendEndpoint := os.Getenv("FRONTEND_ENDPOINT")
 	backendEndpoint := os.Getenv("BACKEND_ENDPOINT")
+	// for now - static GCS provider - later implementing min.io for self hosting
+	storageProvider := "gcs"
 
-	log.Println(bucketName, svcaccountPath)
 	log.Printf("%s", fmt.Sprintf("%s/auth/callback", backendEndpoint))
 
-	bucketHandler := gcs.NewGCSBucketHandler(svcaccountPath, bucketName, googleProjectID)
+	bucketHandler, err := factory.NewStorageProvider(storageProvider)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer bucketHandler.Close()
 
 	s := api.NewAPIServer(":3000", frontendEndpoint, bucketHandler, &oauth2.Config{
 		ClientID:     clientId,

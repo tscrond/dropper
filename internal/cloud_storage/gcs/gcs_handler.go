@@ -2,26 +2,30 @@ package gcs
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"os"
 	"time"
 
 	"cloud.google.com/go/storage"
+
+	"github.com/tscrond/dropper/internal/cloud_storage/types"
 	"github.com/tscrond/dropper/internal/filedata"
 	"github.com/tscrond/dropper/internal/userdata"
+	"github.com/tscrond/dropper/pkg"
+	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
 // TODO create named buckets <bucket_name>-<user_id> + restrict access by ID and token verification
 type GCSBucketHandler struct {
+	Client                *storage.Client
 	ServiceAccountKeyPath string
-	BucketName            string
+	BaseBucketName        string
 	GoogleProjectID       string
 }
 
-func NewGCSBucketHandler(svcaccountPath, bucketName, projId string) *GCSBucketHandler {
+func NewGCSBucketHandler(svcaccountPath, bucketName, projId string) (types.ObjectStorage, error) {
 
 	var err error
 	for i := 0; i < 5; i++ {
@@ -33,14 +37,22 @@ func NewGCSBucketHandler(svcaccountPath, bucketName, projId string) *GCSBucketHa
 		time.Sleep(1 * time.Second)
 	}
 	if err != nil {
-		log.Fatalf("Failed to find credentials file after retries: %v", err)
+		log.Printf("Failed to find credentials file after retries: %v\n", err)
+		return nil, err
+	}
+
+	client, err := storage.NewClient(context.Background(), option.WithCredentialsFile(svcaccountPath))
+	if err != nil {
+		log.Println("Error initializing client:", err)
+		return nil, err
 	}
 
 	return &GCSBucketHandler{
+		Client:                client,
 		ServiceAccountKeyPath: svcaccountPath,
-		BucketName:            bucketName,
+		BaseBucketName:        bucketName,
 		GoogleProjectID:       projId,
-	}
+	}, nil
 }
 
 // Handler that processes a single file per request
@@ -58,23 +70,16 @@ func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *filedata.
 		return nil
 	}
 
-	client, err := storage.NewClient(ctx, option.WithCredentialsFile(b.ServiceAccountKeyPath))
-	if err != nil {
-		log.Println("Error initializing client:", err)
-		return err
-	}
-	defer client.Close()
-
 	fileName := data.RequestHeaders.Filename
 
-	userBucketName := fmt.Sprintf("%s-%s", b.BucketName, authUserData.Id)
-
-	if err := b.CreateBucketIfNotExists(ctx, userBucketName, authUserData.Id); err != nil {
+	if err := b.CreateBucketIfNotExists(ctx, authUserData.Id); err != nil {
 		log.Println(err)
 		return err
 	}
 
-	writer := client.Bucket(userBucketName).Object(fileName).NewWriter(ctx)
+	userBucketName := pkg.GetUserBucketName(b.BaseBucketName, authUserData.Id)
+
+	writer := b.Client.Bucket(userBucketName).Object(fileName).NewWriter(ctx)
 	if _, err := io.Copy(writer, data.MultipartFile); err != nil {
 		log.Println("error uploading file: ", err)
 		return err
@@ -89,44 +94,21 @@ func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *filedata.
 	return nil
 }
 
-// func (b *GCSBucketHandler) AttachPoliciesToBucket(ctx context.Context, client *storage.Client, bucketName, userEmail string) error {
-// 	bucket := client.Bucket(bucketName)
-// 	policy, err := bucket.IAM().Policy(ctx)
-
-// 	if err != nil {
-// 		return fmt.Errorf("error getting bucket IAM policy: %v", err)
-// 	}
-
-// 	role := iam.RoleName("roles/storage.objectAdmin")
-// 	member := fmt.Sprintf("user:%s", userEmail)
-
-// 	policy.Add(member, role)
-// 	if err := bucket.IAM().SetPolicy(ctx, policy); err != nil {
-// 		return fmt.Errorf("failed to update IAM policy: %v", err)
-// 	}
-
-// 	fmt.Printf("Granted %s access to bucket %s\n", userEmail, bucketName)
-// 	return nil
-// }
-
-func (b *GCSBucketHandler) bucketExists(ctx context.Context, client *storage.Client, fullBucketName string) (bool, error) {
-	_, err := client.Bucket(fullBucketName).Attrs(ctx)
+func (b *GCSBucketHandler) BucketExists(ctx context.Context, fullBucketName string) (bool, error) {
+	_, err := b.Client.Bucket(fullBucketName).Attrs(ctx)
 	if err == storage.ErrBucketNotExist {
 		return false, nil
 	}
 	return err == nil, err
 }
 
-func (b *GCSBucketHandler) CreateBucketIfNotExists(ctx context.Context, bucketName, userId string) error {
-	storageClient, err := storage.NewClient(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create storage client: %v", err)
-	}
-	defer storageClient.Close()
+func (b *GCSBucketHandler) CreateBucketIfNotExists(ctx context.Context, userId string) error {
 
-	exists, err := b.bucketExists(ctx, storageClient, bucketName)
+	bucketName := pkg.GetUserBucketName(b.BaseBucketName, userId)
+
+	exists, err := b.BucketExists(ctx, bucketName)
 	if !exists {
-		if err := createBucket(ctx, storageClient, bucketName, b.GoogleProjectID); err != nil {
+		if err := b.CreateBucket(ctx, bucketName, b.GoogleProjectID); err != nil {
 			log.Println("error creating storage bucket: ", err)
 			return err
 		}
@@ -140,14 +122,41 @@ func (b *GCSBucketHandler) CreateBucketIfNotExists(ctx context.Context, bucketNa
 	return nil
 }
 
-func createBucket(ctx context.Context, client *storage.Client, fullBucketName, projectID string) error {
-	bucket := client.Bucket(fullBucketName)
+func (b *GCSBucketHandler) GetUserBucketData(ctx context.Context, id string) (any, error) {
+
+	bucketName := pkg.GetUserBucketName(b.BaseBucketName, id)
+	it := b.Client.Bucket(bucketName).Objects(ctx, nil)
+	for {
+		objAttrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Println(err)
+		}
+		log.Printf("%+v\n", objAttrs)
+	}
+	return BucketData{}, nil
+}
+
+func (b *GCSBucketHandler) CreateBucket(ctx context.Context, fullBucketName, projectID string) error {
+	bucket := b.Client.Bucket(fullBucketName)
+	// userData, _ := ctx.Value(userdata.AuthorizedUserContextKey).(*userdata.AuthorizedUserInfo)
+
 	err := bucket.Create(ctx, projectID, &storage.BucketAttrs{
 		Location: "europe-west1",
 	})
 	if err != nil {
 		return err
 	}
+
 	log.Printf("bucket %s created successfully", fullBucketName)
+	return nil
+}
+
+func (b *GCSBucketHandler) Close() error {
+	if b.Client != nil {
+		return b.Client.Close()
+	}
 	return nil
 }
