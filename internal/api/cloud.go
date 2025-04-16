@@ -30,7 +30,7 @@ func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to retrieve authorized user data", http.StatusForbidden)
 		return
 	}
-	fmt.Println("Authorized User:", authorizedUserData)
+	// fmt.Println("Authorized User:", authorizedUserData)
 
 	// Get file from request
 	file, header, err := r.FormFile("file")
