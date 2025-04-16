@@ -8,21 +8,24 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
 	"github.com/tscrond/dropper/internal/cloud_storage/types"
+	"github.com/tscrond/dropper/internal/repo"
 	"golang.org/x/oauth2"
 )
 
 type APIServer struct {
 	listenPort       string
 	bucketHandler    types.ObjectStorage
+	repository       *repo.Repository
 	OAuthConfig      *oauth2.Config
 	frontendEndpoint string
 }
 
-func NewAPIServer(lp string, fe string, bh types.ObjectStorage, oauth2conf *oauth2.Config) *APIServer {
+func NewAPIServer(lp string, fe string, bh types.ObjectStorage, repository *repo.Repository, oauth2conf *oauth2.Config) *APIServer {
 	return &APIServer{
 		listenPort:       lp,
 		frontendEndpoint: fe,
 		bucketHandler:    bh,
+		repository:       repository,
 		OAuthConfig:      oauth2conf,
 	}
 }
@@ -53,6 +56,7 @@ func (s *APIServer) Start() {
 	// data ops
 	r.Handle("/user_data", s.authMiddleware(http.HandlerFunc(s.getUserData)))
 	r.Handle("/bucket", s.authMiddleware(http.HandlerFunc(s.getUserBucketData)))
+	r.Handle("/share_with", s.authMiddleware(http.HandlerFunc(s.shareWith)))
 
 	log.Printf("Listening on %s\n", s.listenPort)
 	http.ListenAndServe("0.0.0.0"+s.listenPort, r)

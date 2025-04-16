@@ -2,7 +2,9 @@ package gcs
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"html"
 	"io"
 	"log"
 	"os"
@@ -165,6 +167,7 @@ func (b *GCSBucketHandler) getObjectsAttrs(ctx context.Context, bucketName strin
 		// log.Printf("%+v\n", objAttrs)
 
 		objects = append(objects, ObjectMedatata{
+			Name:        objAttrs.Name,
 			ContentType: objAttrs.ContentType,
 			Created:     objAttrs.Created,
 			Deleted:     objAttrs.Deleted,
@@ -172,11 +175,28 @@ func (b *GCSBucketHandler) getObjectsAttrs(ctx context.Context, bucketName strin
 			MD5:         objAttrs.MD5,
 			Size:        objAttrs.Size,
 			MediaLink:   objAttrs.MediaLink,
+			Bucket:      objAttrs.Bucket,
 		})
 	}
 
 	return objects, nil
 }
+
+func (b *GCSBucketHandler) getObjectsAttrsByObjName(ctx context.Context, bucketName, objName string) (*ObjectMedatata, error) {
+	var selectedObj *ObjectMedatata
+	objects, err := b.getObjectsAttrs(ctx, bucketName)
+	if err != nil {
+		log.Println("error getting objects attributes", err)
+		return nil, err
+	}
+	for _, o := range objects {
+		if o.Name == objName {
+			selectedObj = &o
+		}
+	}
+	return selectedObj, nil
+}
+
 func (b *GCSBucketHandler) GetUserBucketData(ctx context.Context, id string) (any, error) {
 
 	bucketName := pkg.GetUserBucketName(b.BaseBucketName, id)
@@ -198,12 +218,30 @@ func (b *GCSBucketHandler) GetUserBucketData(ctx context.Context, id string) (an
 	return bucketData, nil
 }
 
+func (b *GCSBucketHandler) GetUserBucketName(ctx context.Context) (string, error) {
+	authorizedUserData := ctx.Value(userdata.AuthorizedUserContextKey)
+
+	authUserData, ok := authorizedUserData.(*userdata.AuthorizedUserInfo)
+	if !ok {
+		log.Println("cannot read authorized user data")
+		return "", errors.New("cannot read authorized user data")
+	}
+
+	bucketName := pkg.GetUserBucketName(b.BaseBucketName, authUserData.Id)
+
+	return bucketName, nil
+}
+
 func (b *GCSBucketHandler) CreateBucket(ctx context.Context, fullBucketName, projectID string) error {
 	bucket := b.Client.Bucket(fullBucketName)
 	// userData, _ := ctx.Value(userdata.AuthorizedUserContextKey).(*userdata.AuthorizedUserInfo)
 
 	err := bucket.Create(ctx, projectID, &storage.BucketAttrs{
 		Location: "europe-west1",
+		UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+			Enabled: true,
+		},
+		PublicAccessPrevention: storage.PublicAccessPreventionEnforced,
 	})
 	if err != nil {
 		return err
@@ -218,4 +256,33 @@ func (b *GCSBucketHandler) Close() error {
 		return b.Client.Close()
 	}
 	return nil
+}
+
+func (b *GCSBucketHandler) GenerateSignedURL(ctx context.Context, bucket, object string) (string, error) {
+
+	email, pkey, err := pkg.LoadServiceAccount(b.ServiceAccountKeyPath)
+	if err != nil {
+		return "", fmt.Errorf("Bucket(%q) error reading svc account: %w", bucket, err)
+	}
+
+	// attrs, _ := b.getObjectsAttrsByObjName(ctx, bucket, object)
+
+	u, err := storage.SignedURL(bucket, object, &storage.SignedURLOptions{
+		Scheme:         storage.SigningSchemeV4,
+		Method:         "GET",
+		Expires:        time.Now().Add(15 * time.Minute),
+		GoogleAccessID: email,
+		PrivateKey:     pkey,
+		// Style:          storage.VirtualHostedStyle(),
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("Bucket(%q).SignedURL: %w", bucket, err)
+	}
+
+	u = html.UnescapeString(u)
+
+	fmt.Println(u)
+
+	return u, nil
 }

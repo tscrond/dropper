@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/tscrond/dropper/internal/repo/sqlc"
 	"github.com/tscrond/dropper/internal/userdata"
 	"golang.org/x/oauth2"
 )
@@ -35,9 +37,6 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// fmt.Println(t)
-
-	// client := s.OAuthConfig.Client(context.Background(), t)
 	client := s.OAuthConfig.Client(context.Background(), t)
 
 	// Getting the user public details from google API endpoint
@@ -68,6 +67,20 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 	}
 	http.SetCookie(w, sessionCookie)
+
+	username := sql.NullString{String: jsonResp.Name, Valid: true}
+	if err := s.repository.Queries.CreateUser(r.Context(), sqlc.CreateUserParams{
+		GoogleID:  jsonResp.Id,
+		UserName:  username,
+		UserEmail: jsonResp.Email,
+	}); err != nil {
+		// JSON(w, map[string]any{
+		// 	"status":   http.StatusInternalServerError,
+		// 	"response": "cannot create user",
+		// })
+		log.Println(err)
+		http.Redirect(w, r, "/", http.StatusInternalServerError)
+	}
 
 	http.Redirect(w, r, s.frontendEndpoint, http.StatusTemporaryRedirect)
 }
