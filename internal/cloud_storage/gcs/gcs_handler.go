@@ -2,6 +2,7 @@ package gcs
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"html"
@@ -14,6 +15,8 @@ import (
 
 	"github.com/tscrond/dropper/internal/cloud_storage/types"
 	"github.com/tscrond/dropper/internal/filedata"
+	"github.com/tscrond/dropper/internal/repo"
+	"github.com/tscrond/dropper/internal/repo/sqlc"
 	"github.com/tscrond/dropper/internal/userdata"
 	"github.com/tscrond/dropper/pkg"
 	"google.golang.org/api/iterator"
@@ -22,13 +25,14 @@ import (
 
 // TODO create named buckets <bucket_name>-<user_id> + restrict access by ID and token verification
 type GCSBucketHandler struct {
+	repository            *repo.Repository
 	Client                *storage.Client
 	ServiceAccountKeyPath string
 	BaseBucketName        string
 	GoogleProjectID       string
 }
 
-func NewGCSBucketHandler(svcaccountPath, bucketName, projId string) (types.ObjectStorage, error) {
+func NewGCSBucketHandler(svcaccountPath, bucketName, projId string, repository *repo.Repository) (types.ObjectStorage, error) {
 
 	var err error
 	for i := 0; i < 5; i++ {
@@ -51,6 +55,7 @@ func NewGCSBucketHandler(svcaccountPath, bucketName, projId string) (types.Objec
 	}
 
 	return &GCSBucketHandler{
+		repository:            repository,
 		Client:                client,
 		ServiceAccountKeyPath: svcaccountPath,
 		BaseBucketName:        bucketName,
@@ -75,14 +80,41 @@ func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *filedata.
 
 	fileName := data.RequestHeaders.Filename
 
-	if err := b.CreateBucketIfNotExists(ctx, authUserData.Id); err != nil {
+	// if err := b.CreateBucketIfNotExists(ctx, authUserData.Id); err != nil {
+	// 	fmt.Println("dupa3")
+	// 	log.Println(err)
+	// 	return err
+	// }
+
+	// userBucketName := pkg.GetUserBucketName(b.BaseBucketName, authUserData.Id)
+	userBucketName, err := b.repository.Queries.GetUserBucketById(ctx, authUserData.Id)
+	if err != nil {
+		fmt.Println("dupa4")
 		log.Println(err)
 		return err
 	}
 
-	userBucketName := pkg.GetUserBucketName(b.BaseBucketName, authUserData.Id)
+	// try to get users bucket name, if not existing - retrieve the ID from authorized context and update the database
+	newUserBucketName := userBucketName.String
+	if !userBucketName.Valid || userBucketName.String == "" {
+		retrievedBucketName, err := b.GetUserBucketName(ctx)
+		if err != nil {
+			log.Println("Cannot find users bucket!", err)
+			return err
+		}
 
-	writer := b.Client.Bucket(userBucketName).Object(fileName).NewWriter(ctx)
+		if err := b.repository.Queries.UpdateUserBucketNameById(ctx, sqlc.UpdateUserBucketNameByIdParams{
+			UserBucket: sql.NullString{String: retrievedBucketName, Valid: true},
+			GoogleID:   authUserData.Id,
+		}); err != nil {
+			log.Println("dupa5")
+			log.Println(err)
+			return err
+		}
+		newUserBucketName = retrievedBucketName
+	}
+
+	writer := b.Client.Bucket(newUserBucketName).Object(fileName).NewWriter(ctx)
 	if _, err := io.Copy(writer, data.MultipartFile); err != nil {
 		log.Println("error uploading file: ", err)
 		return err
@@ -100,6 +132,7 @@ func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *filedata.
 func (b *GCSBucketHandler) BucketExists(ctx context.Context, fullBucketName string) (bool, error) {
 	_, err := b.Client.Bucket(fullBucketName).Attrs(ctx)
 	if err == storage.ErrBucketNotExist {
+		log.Println("bucket does not exist")
 		return false, nil
 	}
 	return err == nil, err
@@ -248,7 +281,7 @@ func (b *GCSBucketHandler) CreateBucket(ctx context.Context, fullBucketName, pro
 	}
 
 	log.Printf("bucket %s created successfully", fullBucketName)
-	return nil
+	return err
 }
 
 func (b *GCSBucketHandler) Close() error {
@@ -285,4 +318,8 @@ func (b *GCSBucketHandler) GenerateSignedURL(ctx context.Context, bucket, object
 	fmt.Println(u)
 
 	return u, nil
+}
+
+func (b *GCSBucketHandler) GetBucketBaseName() string {
+	return b.BaseBucketName
 }

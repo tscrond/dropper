@@ -27,7 +27,8 @@ type Share struct {
 }
 
 type User struct {
-	GoogleID  string         `json:"google_id"`
-	UserName  sql.NullString `json:"user_name"`
-	UserEmail string         `json:"user_email"`
+	GoogleID   string         `json:"google_id"`
+	UserName   sql.NullString `json:"user_name"`
+	UserEmail  string         `json:"user_email"`
+	UserBucket sql.NullString `json:"user_bucket"`
 }

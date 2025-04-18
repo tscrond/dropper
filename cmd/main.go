@@ -24,20 +24,20 @@ func main() {
 	backendEndpoint := os.Getenv("BACKEND_ENDPOINT")
 	connStr := os.Getenv("DB_CONNECTION_STRING")
 
-	// for now - static GCS provider - later implementing min.io for self hosting
-	storageProvider := "gcs"
-
-	bucketHandler, err := InitObjectStorage(backendEndpoint, storageProvider)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer bucketHandler.Close()
-
 	repository, err := InitRepository(connStr)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	defer repository.Close()
+
+	// for now - static GCS provider - later implementing min.io for self hosting
+	storageProvider := "gcs"
+
+	bucketHandler, err := InitObjectStorage(backendEndpoint, storageProvider, repository)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer bucketHandler.Close()
 
 	s := api.NewAPIServer(":3000", frontendEndpoint, bucketHandler, repository, &oauth2.Config{
 		ClientID:     clientId,
@@ -50,11 +50,11 @@ func main() {
 	s.Start()
 }
 
-func InitObjectStorage(backendEndpoint, storageProvider string) (types.ObjectStorage, error) {
+func InitObjectStorage(backendEndpoint, storageProvider string, repository *repo.Repository) (types.ObjectStorage, error) {
 
 	log.Printf("%s", fmt.Sprintf("%s/auth/callback", backendEndpoint))
 
-	return factory.NewStorageProvider(storageProvider)
+	return factory.NewStorageProvider(storageProvider, repository)
 }
 
 func InitRepository(connString string) (*repo.Repository, error) {
