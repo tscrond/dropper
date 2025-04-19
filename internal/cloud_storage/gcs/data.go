@@ -16,8 +16,17 @@ type ObjectMedatata struct {
 	Created     time.Time `json:"date_created"`
 	Deleted     time.Time `json:"date_deleted"`
 	Updated     time.Time `json:"date_updated"`
-	MD5         []byte    `json:"md5"`
+	MD5         string    `json:"md5"`
 	Size        int64     `json:"size"`
 	MediaLink   string    `json:"media_link"`
 	Bucket      string    `json:"bucket"`
+}
+
+type SharedData struct {
+	Name              string `json:"name"`
+	Owner             string `json:"owner"`
+	SharingLink       string `json:"sharing_link"`
+	ContentType       string `json:"content_type"`
+	Size              int64  `json:"size"`
+	OriginatingBucket string `json:"origin_bucket"`
 }

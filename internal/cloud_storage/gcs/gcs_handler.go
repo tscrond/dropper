@@ -3,6 +3,7 @@ package gcs
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"html"
@@ -65,6 +66,7 @@ func NewGCSBucketHandler(svcaccountPath, bucketName, projId string, repository *
 
 // Handler that processes a single file per request
 func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *filedata.FileData) error {
+
 	authorizedUserData := ctx.Value(userdata.AuthorizedUserContextKey)
 
 	authUserData, ok := authorizedUserData.(*userdata.AuthorizedUserInfo)
@@ -80,16 +82,9 @@ func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *filedata.
 
 	fileName := data.RequestHeaders.Filename
 
-	// if err := b.CreateBucketIfNotExists(ctx, authUserData.Id); err != nil {
-	// 	fmt.Println("dupa3")
-	// 	log.Println(err)
-	// 	return err
-	// }
-
 	// userBucketName := pkg.GetUserBucketName(b.BaseBucketName, authUserData.Id)
 	userBucketName, err := b.repository.Queries.GetUserBucketById(ctx, authUserData.Id)
 	if err != nil {
-		fmt.Println("dupa4")
 		log.Println(err)
 		return err
 	}
@@ -107,25 +102,56 @@ func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *filedata.
 			UserBucket: sql.NullString{String: retrievedBucketName, Valid: true},
 			GoogleID:   authUserData.Id,
 		}); err != nil {
-			log.Println("dupa5")
 			log.Println(err)
 			return err
 		}
 		newUserBucketName = retrievedBucketName
 	}
 
+	// write new object to the bucket
 	writer := b.Client.Bucket(newUserBucketName).Object(fileName).NewWriter(ctx)
 	if _, err := io.Copy(writer, data.MultipartFile); err != nil {
 		log.Println("error uploading file: ", err)
 		return err
 	}
-
 	if err := writer.Close(); err != nil {
 		log.Println("error closing writer:", err)
 		return err
 	}
 
-	log.Printf("file %s uploaded successfully", fileName)
+	newlyCreatedObj := b.Client.Bucket(newUserBucketName).Object(fileName)
+
+	objAttrs, err := newlyCreatedObj.Attrs(ctx)
+	if err != nil {
+		log.Println("err reading obj attrs: ", err)
+		return err
+	}
+
+	insertArgs := sqlc.InsertFileParams{
+		OwnerGoogleID: sql.NullString{Valid: true, String: authUserData.Id},
+		FileName:      fileName,
+		FileType:      sql.NullString{Valid: true, String: objAttrs.ContentType},
+		Size:          sql.NullInt64{Valid: true, Int64: objAttrs.Size},
+		Md5Checksum:   string(hex.EncodeToString(objAttrs.MD5)),
+	}
+
+	// ensure the object data is saved to DB if it does not exist
+	file, err := b.repository.Queries.InsertFile(ctx, insertArgs)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Handle conflict (file with same md5_checksum already exists)
+			log.Printf("file already exists: %s\n", err)
+			return nil
+		} else {
+			log.Println("error inserting file to DB, removing the object from the bucket: ", err)
+			if err := newlyCreatedObj.Delete(ctx); err != nil {
+				log.Printf("error Object(%v).Delete: %v\n", newlyCreatedObj, err)
+				return err
+			}
+			return err
+		}
+	}
+	log.Printf("file %s uploaded successfully and saved to the DB: %+v", fileName, file)
 	return nil
 }
 
@@ -136,6 +162,21 @@ func (b *GCSBucketHandler) BucketExists(ctx context.Context, fullBucketName stri
 		return false, nil
 	}
 	return err == nil, err
+}
+
+func (b *GCSBucketHandler) checkObjExists(ctx context.Context, bucketName, objName string) (bool, error) {
+	obj := b.Client.Bucket(bucketName).Object(objName)
+
+	_, err := obj.Attrs(ctx)
+	if err == storage.ErrObjectNotExist {
+		return false, nil
+	}
+	if err != nil {
+		log.Printf("error checking object existence: %v", err)
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (b *GCSBucketHandler) CreateBucketIfNotExists(ctx context.Context, userId string) error {
@@ -164,9 +205,9 @@ func (b *GCSBucketHandler) getBucketAttrs(ctx context.Context, bucketName string
 		return nil, err
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("Bucket(%q).Attrs: %w", bucketName, err)
-	}
+	// if err != nil {
+	// 	return nil, fmt.Errorf("Bucket(%q).Attrs: %w", bucketName, err)
+	// }
 	fmt.Printf("BucketName: %v\n", bucketDataAttrs.Name)
 	fmt.Printf("StorageClass: %v\n", bucketDataAttrs.StorageClass)
 	fmt.Printf("TimeCreated: %v\n", bucketDataAttrs.Created)
@@ -205,7 +246,7 @@ func (b *GCSBucketHandler) getObjectsAttrs(ctx context.Context, bucketName strin
 			Created:     objAttrs.Created,
 			Deleted:     objAttrs.Deleted,
 			Updated:     objAttrs.Updated,
-			MD5:         objAttrs.MD5,
+			MD5:         string(hex.EncodeToString(objAttrs.MD5)),
 			Size:        objAttrs.Size,
 			MediaLink:   objAttrs.MediaLink,
 			Bucket:      objAttrs.Bucket,
@@ -291,19 +332,17 @@ func (b *GCSBucketHandler) Close() error {
 	return nil
 }
 
-func (b *GCSBucketHandler) GenerateSignedURL(ctx context.Context, bucket, object string) (string, error) {
+func (b *GCSBucketHandler) GenerateSignedURL(ctx context.Context, bucket, object string, expiresAt time.Time) (string, error) {
 
 	email, pkey, err := pkg.LoadServiceAccount(b.ServiceAccountKeyPath)
 	if err != nil {
 		return "", fmt.Errorf("Bucket(%q) error reading svc account: %w", bucket, err)
 	}
 
-	// attrs, _ := b.getObjectsAttrsByObjName(ctx, bucket, object)
-
 	u, err := storage.SignedURL(bucket, object, &storage.SignedURLOptions{
 		Scheme:         storage.SigningSchemeV4,
 		Method:         "GET",
-		Expires:        time.Now().Add(15 * time.Minute),
+		Expires:        expiresAt,
 		GoogleAccessID: email,
 		PrivateKey:     pkey,
 		// Style:          storage.VirtualHostedStyle(),
@@ -322,4 +361,8 @@ func (b *GCSBucketHandler) GenerateSignedURL(ctx context.Context, bucket, object
 
 func (b *GCSBucketHandler) GetBucketBaseName() string {
 	return b.BaseBucketName
+}
+
+func (b *GCSBucketHandler) GetSharedData(ctx context.Context, id string) (any, error) {
+	return nil, nil
 }

@@ -1,1 +1,0 @@
-ALTER TABLE users ADD COLUMN user_bucket TEXT UNIQUE;
