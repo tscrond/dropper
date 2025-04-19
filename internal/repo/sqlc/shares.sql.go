@@ -11,6 +11,28 @@ import (
 	"time"
 )
 
+const getBucketAndObjectFromToken = `-- name: GetBucketAndObjectFromToken :one
+SELECT
+u.user_bucket,
+f.file_name
+FROM shares s
+JOIN files f ON s.file_id = f.id
+JOIN users u ON f.owner_google_id = u.google_id
+WHERE s.sharing_token = $1
+`
+
+type GetBucketAndObjectFromTokenRow struct {
+	UserBucket sql.NullString `json:"user_bucket"`
+	FileName   string         `json:"file_name"`
+}
+
+func (q *Queries) GetBucketAndObjectFromToken(ctx context.Context, sharingToken string) (GetBucketAndObjectFromTokenRow, error) {
+	row := q.db.QueryRowContext(ctx, getBucketAndObjectFromToken, sharingToken)
+	var i GetBucketAndObjectFromTokenRow
+	err := row.Scan(&i.UserBucket, &i.FileName)
+	return i, err
+}
+
 const getFilesSharedWithUser = `-- name: GetFilesSharedWithUser :many
 SELECT f.id, f.owner_google_id, f.file_name, f.file_type, f.size, f.md5_checksum
 FROM shares s
@@ -48,19 +70,42 @@ func (q *Queries) GetFilesSharedWithUser(ctx context.Context, sharedFor sql.Null
 	return items, nil
 }
 
+const getSharedFileIdFromToken = `-- name: GetSharedFileIdFromToken :one
+SELECT file_id FROM shares WHERE sharing_token = $1
+`
+
+func (q *Queries) GetSharedFileIdFromToken(ctx context.Context, sharingToken string) (sql.NullInt32, error) {
+	row := q.db.QueryRowContext(ctx, getSharedFileIdFromToken, sharingToken)
+	var file_id sql.NullInt32
+	err := row.Scan(&file_id)
+	return file_id, err
+}
+
+const getTokenExpirationTime = `-- name: GetTokenExpirationTime :one
+SELECT expires_at FROM shares WHERE sharing_token = $1
+`
+
+func (q *Queries) GetTokenExpirationTime(ctx context.Context, sharingToken string) (time.Time, error) {
+	row := q.db.QueryRowContext(ctx, getTokenExpirationTime, sharingToken)
+	var expires_at time.Time
+	err := row.Scan(&expires_at)
+	return expires_at, err
+}
+
 const insertShare = `-- name: InsertShare :one
-INSERT INTO shares (shared_by, shared_for, file_id, expires_at)
-VALUES ($1, $2, $3, $4)
+INSERT INTO shares (shared_by, shared_for, file_id, expires_at, sharing_token)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (shared_by, shared_for, file_id) DO UPDATE
 SET expires_at = EXCLUDED.expires_at
-RETURNING id, shared_by, shared_for, file_id, created_at, expires_at
+RETURNING id, shared_by, shared_for, sharing_token, file_id, created_at, expires_at
 `
 
 type InsertShareParams struct {
-	SharedBy  sql.NullString `json:"shared_by"`
-	SharedFor sql.NullString `json:"shared_for"`
-	FileID    sql.NullInt32  `json:"file_id"`
-	ExpiresAt time.Time      `json:"expires_at"`
+	SharedBy     sql.NullString `json:"shared_by"`
+	SharedFor    sql.NullString `json:"shared_for"`
+	FileID       sql.NullInt32  `json:"file_id"`
+	ExpiresAt    time.Time      `json:"expires_at"`
+	SharingToken string         `json:"sharing_token"`
 }
 
 func (q *Queries) InsertShare(ctx context.Context, arg InsertShareParams) (Share, error) {
@@ -69,12 +114,14 @@ func (q *Queries) InsertShare(ctx context.Context, arg InsertShareParams) (Share
 		arg.SharedFor,
 		arg.FileID,
 		arg.ExpiresAt,
+		arg.SharingToken,
 	)
 	var i Share
 	err := row.Scan(
 		&i.ID,
 		&i.SharedBy,
 		&i.SharedFor,
+		&i.SharingToken,
 		&i.FileID,
 		&i.CreatedAt,
 		&i.ExpiresAt,

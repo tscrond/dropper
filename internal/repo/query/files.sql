@@ -11,3 +11,6 @@ SELECT * FROM files WHERE owner_google_id = $1;
 SELECT id, md5_checksum
 FROM files
 WHERE owner_google_id = $1 AND file_name = $2;
+
+-- name: GetFileById :one
+SELECT * FROM files WHERE id = $1;

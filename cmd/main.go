@@ -62,7 +62,7 @@ func InitRepository(connString string) (*repo.Repository, error) {
 		panic("no conn string provided")
 	}
 
-	fmt.Println("conn str:", connString)
+	log.Println("conn str:", connString)
 
 	db, err := sql.Open("postgres", connString)
 	if err != nil {

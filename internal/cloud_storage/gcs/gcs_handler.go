@@ -205,14 +205,8 @@ func (b *GCSBucketHandler) getBucketAttrs(ctx context.Context, bucketName string
 		return nil, err
 	}
 
-	// if err != nil {
-	// 	return nil, fmt.Errorf("Bucket(%q).Attrs: %w", bucketName, err)
-	// }
-	fmt.Printf("BucketName: %v\n", bucketDataAttrs.Name)
-	fmt.Printf("StorageClass: %v\n", bucketDataAttrs.StorageClass)
-	fmt.Printf("TimeCreated: %v\n", bucketDataAttrs.Created)
 	if bucketDataAttrs.Labels != nil {
-		fmt.Printf("\n\n\nLabels:")
+		// fmt.Printf("\n\n\nLabels:")
 		for key, value := range bucketDataAttrs.Labels {
 			fmt.Printf("\t%v = %v\n", key, value)
 		}
@@ -354,7 +348,7 @@ func (b *GCSBucketHandler) GenerateSignedURL(ctx context.Context, bucket, object
 
 	u = html.UnescapeString(u)
 
-	fmt.Println(u)
+	// fmt.Println(u)
 
 	return u, nil
 }

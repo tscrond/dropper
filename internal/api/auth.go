@@ -27,13 +27,21 @@ func (s *APIServer) oauthHandler(w http.ResponseWriter, r *http.Request) {
 func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		http.Error(w, "Missing authorization code", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		JSON(w, map[string]any{
+			"status":   http.StatusBadRequest,
+			"response": "Missing authorization code",
+		})
 		return
 	}
 
 	t, err := s.OAuthConfig.Exchange(context.Background(), code)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		JSON(w, map[string]any{
+			"status":   http.StatusBadRequest,
+			"response": "Missing authorization code",
+		})
 		return
 	}
 
@@ -42,7 +50,11 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 	// Getting the user public details from google API endpoint
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		JSON(w, map[string]any{
+			"status":   http.StatusBadRequest,
+			"response": "Missing authorization code",
+		})
 		return
 	}
 	defer resp.Body.Close()
@@ -52,11 +64,15 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 	// Reading the JSON body using JSON decoder
 	err = json.NewDecoder(resp.Body).Decode(&jsonResp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		JSON(w, map[string]any{
+			"status":   http.StatusInternalServerError,
+			"response": err.Error(),
+		})
 		return
 	}
 
-	fmt.Printf("%+v", jsonResp)
+	// fmt.Printf("%+v", jsonResp)
 
 	// Store user information in a session (cookie)
 	sessionCookie := &http.Cookie{
@@ -81,11 +97,7 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 		UserEmail:  jsonResp.Email,
 		UserBucket: userBucket,
 	}); err != nil {
-		// JSON(w, map[string]any{
-		// 	"status":   http.StatusInternalServerError,
-		// 	"response": "cannot create user",
-		// })
-		log.Println(err)
+
 		http.Redirect(w, r, s.frontendEndpoint, http.StatusInternalServerError)
 	}
 
@@ -95,25 +107,37 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 func (s *APIServer) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("access_token")
-		fmt.Println(cookie)
+		// fmt.Println(cookie)
 		if err != nil || cookie.Value == "" {
-			http.Error(w, "Unauthorized", http.StatusForbidden)
+			w.WriteHeader(http.StatusForbidden)
+			JSON(w, map[string]any{
+				"status":   http.StatusForbidden,
+				"response": "Unauthorized",
+			})
 			return
 		}
 
 		valid, verifiedUserData := s.verifyToken(cookie.Value)
 		if !valid {
-			http.Error(w, "Unauthorized (invalid or expired session)", http.StatusForbidden)
+			w.WriteHeader(http.StatusForbidden)
+			JSON(w, map[string]any{
+				"status":   http.StatusForbidden,
+				"response": "Unauthorized (invalid or expired session)",
+			})
 			return
 		}
-		log.Println("verified user:", verifiedUserData)
+		// log.Println("verified user:", verifiedUserData)
 
 		userInfo, err := s.fetchUserInfo(cookie.Value)
 		if err != nil {
-			http.Error(w, "Could not fetch logged user info", http.StatusForbidden)
+			w.WriteHeader(http.StatusForbidden)
+			JSON(w, map[string]any{
+				"status":   http.StatusForbidden,
+				"response": "Could not fetch logged user info",
+			})
 			return
 		}
-		fmt.Println("logged user info::", userInfo)
+		// log.Println("logged user info::", userInfo)
 
 		ctx := context.WithValue(r.Context(), userdata.VerifiedUserContextKey, verifiedUserData)
 		ctx = context.WithValue(ctx, userdata.AuthorizedUserContextKey, userInfo)
@@ -159,7 +183,8 @@ func (s *APIServer) logout(w http.ResponseWriter, r *http.Request) {
 	// Check if access_token cookie exists
 	cookie, err := r.Cookie("access_token")
 	if err != nil {
-		JSON(w, map[string]interface{}{
+		w.WriteHeader(http.StatusNotFound)
+		JSON(w, map[string]any{
 			"response":          "cookie_not_found",
 			"code":              http.StatusNotFound,
 			"logout_successful": true,
@@ -189,7 +214,7 @@ func (s *APIServer) logout(w http.ResponseWriter, r *http.Request) {
 	client := http.DefaultClient
 	resp, err := client.Do(req)
 	if err != nil {
-		JSON(w, map[string]interface{}{
+		JSON(w, map[string]any{
 			"response":          "internal_server_error",
 			"code":              http.StatusInternalServerError,
 			"logout_successful": false,
@@ -200,7 +225,8 @@ func (s *APIServer) logout(w http.ResponseWriter, r *http.Request) {
 
 	// Check response status
 	if resp.StatusCode != http.StatusOK {
-		JSON(w, map[string]interface{}{
+		w.WriteHeader(resp.StatusCode)
+		JSON(w, map[string]any{
 			"response":          "failed_to_revoke_token",
 			"code":              resp.StatusCode,
 			"logout_successful": false,
@@ -220,8 +246,9 @@ func (s *APIServer) logout(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, expiredCookie)
 
+	w.WriteHeader(http.StatusOK)
 	// Return success response
-	JSON(w, map[string]interface{}{
+	JSON(w, map[string]any{
 		"response":          "session_invalidated",
 		"code":              http.StatusOK,
 		"logout_successful": true,
@@ -231,7 +258,7 @@ func (s *APIServer) logout(w http.ResponseWriter, r *http.Request) {
 func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]interface{}{
+		JSON(w, map[string]any{
 			"response":      "bad_request",
 			"code":          http.StatusBadRequest,
 			"authenticated": false,
@@ -242,7 +269,7 @@ func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("access_token")
 	if err != nil || cookie.Value == "" {
 		w.WriteHeader(http.StatusForbidden)
-		response := map[string]interface{}{
+		response := map[string]any{
 			"response":      "access_denied",
 			"code":          http.StatusForbidden,
 			"authenticated": false,
@@ -307,7 +334,11 @@ func JSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(v); err != nil {
-		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		JSON(w, map[string]any{
+			"status":   http.StatusInternalServerError,
+			"response": "Error encoding JSON",
+		})
 		return
 	}
 }

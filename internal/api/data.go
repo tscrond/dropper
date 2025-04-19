@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/tscrond/dropper/internal/userdata"
@@ -10,7 +9,7 @@ import (
 func (s *APIServer) getUserData(w http.ResponseWriter, r *http.Request) {
 
 	userData, ok := r.Context().Value(userdata.AuthorizedUserContextKey).(*userdata.AuthorizedUserInfo)
-	fmt.Println(userData)
+	// fmt.Println(userData)
 	if !ok {
 		JSON(w, map[string]interface{}{
 			"response":  "access_denied",
@@ -41,7 +40,7 @@ func (s *APIServer) getUserBucketData(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userData, ok := r.Context().Value(userdata.AuthorizedUserContextKey).(*userdata.AuthorizedUserInfo)
-	fmt.Println(userData)
+	// fmt.Println(userData)
 	if !ok {
 		JSON(w, map[string]any{
 			"response":  "access_denied",
@@ -53,7 +52,7 @@ func (s *APIServer) getUserBucketData(w http.ResponseWriter, r *http.Request) {
 
 	bucketData, err := s.bucketHandler.GetUserBucketData(ctx, userData.Id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		JSON(w, map[string]any{
 			"response":    "internal_error",
 			"code":        http.StatusInternalServerError,
@@ -62,6 +61,7 @@ func (s *APIServer) getUserBucketData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	JSON(w, map[string]any{
 		"response":    "ok",
 		"code":        http.StatusOK,

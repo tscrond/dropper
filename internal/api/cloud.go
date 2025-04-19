@@ -21,13 +21,21 @@ func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	verifiedUserData, ok := r.Context().Value(userdata.VerifiedUserContextKey).(*userdata.VerifiedUserInfo)
 	if !ok {
-		http.Error(w, "Failed to retrieve verified user data", http.StatusForbidden)
+		w.WriteHeader(http.StatusForbidden)
+		JSON(w, map[string]any{
+			"status":   http.StatusInternalServerError,
+			"response": "Failed to retrieve verified user data",
+		})
 		return
 	}
 
 	authorizedUserData, ok := r.Context().Value(userdata.AuthorizedUserContextKey).(*userdata.AuthorizedUserInfo)
 	if !ok {
-		http.Error(w, "Failed to retrieve authorized user data", http.StatusForbidden)
+		w.WriteHeader(http.StatusForbidden)
+		JSON(w, map[string]any{
+			"status":   http.StatusForbidden,
+			"response": "Failed to retrieve authorized user data",
+		})
 		return
 	}
 	// fmt.Println("Authorized User:", authorizedUserData)
@@ -35,7 +43,11 @@ func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Get file from request
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "Failed to parse file from request", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		JSON(w, map[string]any{
+			"status":   http.StatusBadRequest,
+			"response": "Failed to parse file from request",
+		})
 		log.Println(err)
 		return
 	}
@@ -44,8 +56,11 @@ func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Create fileData object
 	fileData := filedata.NewFileData(file, header)
 	if fileData == nil {
-		http.Error(w, "Invalid file data", http.StatusInternalServerError)
-		log.Println("Invalid file data")
+		w.WriteHeader(http.StatusInternalServerError)
+		JSON(w, map[string]any{
+			"status":   http.StatusInternalServerError,
+			"response": "Invalid file data",
+		})
 		return
 	}
 
@@ -54,9 +69,18 @@ func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
 	ctx = context.WithValue(ctx, userdata.AuthorizedUserContextKey, authorizedUserData)
 
 	if err := s.bucketHandler.SendFileToBucket(ctx, fileData); err != nil {
-		http.Error(w, "Failed to send file to bucket:", http.StatusInternalServerError)
-		// fmt.Fprintf(w, "error uploading files: %+v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		JSON(w, map[string]any{
+			"status":   http.StatusInternalServerError,
+			"response": "Failed to send file to bucket",
+		})
+		return
 	}
 
-	fmt.Fprintf(w, "Files uploaded successfully: %+v\n", fileData.RequestHeaders.Filename)
+	msg := fmt.Sprintf("Files uploaded successfully: %+v\n", fileData.RequestHeaders.Filename)
+	w.WriteHeader(http.StatusOK)
+	JSON(w, map[string]any{
+		"status":   http.StatusOK,
+		"response": msg,
+	})
 }

@@ -10,6 +10,24 @@ import (
 	"database/sql"
 )
 
+const getFileById = `-- name: GetFileById :one
+SELECT id, owner_google_id, file_name, file_type, size, md5_checksum FROM files WHERE id = $1
+`
+
+func (q *Queries) GetFileById(ctx context.Context, id int32) (File, error) {
+	row := q.db.QueryRowContext(ctx, getFileById, id)
+	var i File
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerGoogleID,
+		&i.FileName,
+		&i.FileType,
+		&i.Size,
+		&i.Md5Checksum,
+	)
+	return i, err
+}
+
 const getFileByOwnerAndName = `-- name: GetFileByOwnerAndName :one
 SELECT id, md5_checksum
 FROM files

@@ -23,6 +23,7 @@ CREATE TABLE shares (
     id SERIAL PRIMARY KEY,
     shared_by TEXT REFERENCES users(user_email) ON DELETE CASCADE,
     shared_for TEXT,
+    sharing_token TEXT NOT NULL UNIQUE,
     file_id INTEGER REFERENCES files(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL,

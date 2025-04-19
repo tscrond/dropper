@@ -19,12 +19,13 @@ type File struct {
 }
 
 type Share struct {
-	ID        int32          `json:"id"`
-	SharedBy  sql.NullString `json:"shared_by"`
-	SharedFor sql.NullString `json:"shared_for"`
-	FileID    sql.NullInt32  `json:"file_id"`
-	CreatedAt sql.NullTime   `json:"created_at"`
-	ExpiresAt time.Time      `json:"expires_at"`
+	ID           int32          `json:"id"`
+	SharedBy     sql.NullString `json:"shared_by"`
+	SharedFor    sql.NullString `json:"shared_for"`
+	SharingToken string         `json:"sharing_token"`
+	FileID       sql.NullInt32  `json:"file_id"`
+	CreatedAt    sql.NullTime   `json:"created_at"`
+	ExpiresAt    time.Time      `json:"expires_at"`
 }
 
 type User struct {

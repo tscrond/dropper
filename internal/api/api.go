@@ -53,7 +53,7 @@ func (s *APIServer) Start() {
 	// functionality
 	r.Handle("/upload", s.authMiddleware(http.HandlerFunc(s.uploadHandler)))
 	r.Handle("/share", s.authMiddleware(http.HandlerFunc(s.shareWith)))
-	r.Handle("/download", s.authMiddleware(http.HandlerFunc(s.downloadThroughProxy)))
+	r.Handle("/download/{token}", s.authMiddleware(http.HandlerFunc(s.downloadThroughProxy)))
 
 	r.Handle("/user_data", s.authMiddleware(http.HandlerFunc(s.getUserData)))
 	r.Handle("/bucket_data", s.authMiddleware(http.HandlerFunc(s.getUserBucketData)))
