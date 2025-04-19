@@ -15,6 +15,5 @@ type ObjectStorage interface {
 	GetUserBucketName(ctx context.Context) (string, error)
 	GetBucketBaseName() string
 	GenerateSignedURL(ctx context.Context, bucket, object string, expiresAt time.Time) (string, error)
-	GetSharedData(ctx context.Context, id string) (any, error)
 	Close() error
 }

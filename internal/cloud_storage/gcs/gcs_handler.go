@@ -356,7 +356,3 @@ func (b *GCSBucketHandler) GenerateSignedURL(ctx context.Context, bucket, object
 func (b *GCSBucketHandler) GetBucketBaseName() string {
 	return b.BaseBucketName
 }
-
-func (b *GCSBucketHandler) GetSharedData(ctx context.Context, id string) (any, error) {
-	return nil, nil
-}

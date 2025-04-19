@@ -119,13 +119,6 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// authorizedUserData := ctx.Value(userdata.AuthorizedUserContextKey)
-	// authUserData, ok := authorizedUserData.(*userdata.AuthorizedUserInfo)
-	// if !ok {
-	// 	log.Println("cannot read authorized user data")
-	// 	return
-	// }
-
 	// 1. parse sharing token from url path
 	sharingToken := chi.URLParam(r, "token")
 	log.Println(sharingToken)

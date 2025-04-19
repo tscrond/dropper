@@ -21,12 +21,3 @@ type ObjectMedatata struct {
 	MediaLink   string    `json:"media_link"`
 	Bucket      string    `json:"bucket"`
 }
-
-type SharedData struct {
-	Name              string `json:"name"`
-	Owner             string `json:"owner"`
-	SharingLink       string `json:"sharing_link"`
-	ContentType       string `json:"content_type"`
-	Size              int64  `json:"size"`
-	OriginatingBucket string `json:"origin_bucket"`
-}
