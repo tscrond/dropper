@@ -5,7 +5,8 @@ go 1.23.3
 require (
 	cloud.google.com/go/storage v1.51.0
 	github.com/go-chi/chi/v5 v5.2.1
-	github.com/markbates/goth v1.80.0
+	github.com/golang-migrate/migrate/v4 v4.18.2
+	github.com/lib/pq v1.10.9
 	github.com/rs/cors v1.11.1
 	golang.org/x/oauth2 v0.28.0
 	google.golang.org/api v0.224.0
@@ -29,19 +30,12 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/golang-migrate/migrate v3.5.4+incompatible // indirect
-	github.com/golang-migrate/migrate/v4 v4.18.2 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.5 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.7.4 // indirect
-	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/lib/pq v1.10.9 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.34.0 // indirect

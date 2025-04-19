@@ -69,17 +69,24 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, sessionCookie)
 
 	username := sql.NullString{String: jsonResp.Name, Valid: true}
+	userBucket := sql.NullString{
+		String: fmt.Sprintf("%s-%s", s.bucketHandler.GetBucketBaseName(), jsonResp.Id),
+		Valid: func() bool {
+			return jsonResp.Id != ""
+		}(),
+	}
 	if err := s.repository.Queries.CreateUser(r.Context(), sqlc.CreateUserParams{
-		GoogleID:  jsonResp.Id,
-		UserName:  username,
-		UserEmail: jsonResp.Email,
+		GoogleID:   jsonResp.Id,
+		UserName:   username,
+		UserEmail:  jsonResp.Email,
+		UserBucket: userBucket,
 	}); err != nil {
 		// JSON(w, map[string]any{
 		// 	"status":   http.StatusInternalServerError,
 		// 	"response": "cannot create user",
 		// })
 		log.Println(err)
-		http.Redirect(w, r, "/", http.StatusInternalServerError)
+		http.Redirect(w, r, s.frontendEndpoint, http.StatusInternalServerError)
 	}
 
 	http.Redirect(w, r, s.frontendEndpoint, http.StatusTemporaryRedirect)
@@ -110,6 +117,11 @@ func (s *APIServer) authMiddleware(next http.Handler) http.Handler {
 
 		ctx := context.WithValue(r.Context(), userdata.VerifiedUserContextKey, verifiedUserData)
 		ctx = context.WithValue(ctx, userdata.AuthorizedUserContextKey, userInfo)
+
+		if err := s.bucketHandler.CreateBucketIfNotExists(ctx, userInfo.Id); err != nil {
+			log.Println(err)
+			return
+		}
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -218,6 +230,7 @@ func (s *APIServer) logout(w http.ResponseWriter, r *http.Request) {
 
 func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusBadRequest)
 		JSON(w, map[string]interface{}{
 			"response":      "bad_request",
 			"code":          http.StatusBadRequest,
@@ -228,6 +241,7 @@ func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
 	}
 	cookie, err := r.Cookie("access_token")
 	if err != nil || cookie.Value == "" {
+		w.WriteHeader(http.StatusForbidden)
 		response := map[string]interface{}{
 			"response":      "access_denied",
 			"code":          http.StatusForbidden,
@@ -242,6 +256,7 @@ func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
 
 	valid, userInfo := s.verifyToken(cookie.Value)
 	if !valid {
+		w.WriteHeader(http.StatusForbidden)
 		response := map[string]interface{}{
 			"response":      "access_denied",
 			"code":          http.StatusForbidden,
@@ -252,6 +267,7 @@ func (s *APIServer) isValid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	response := map[string]interface{}{
 		"response":      "access_granted",
 		"code":          http.StatusOK,

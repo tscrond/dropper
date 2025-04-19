@@ -54,8 +54,8 @@ func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
 	ctx = context.WithValue(ctx, userdata.AuthorizedUserContextKey, authorizedUserData)
 
 	if err := s.bucketHandler.SendFileToBucket(ctx, fileData); err != nil {
-		http.Error(w, "Failed to send file to bucket", http.StatusInternalServerError)
-		log.Fatal(err)
+		http.Error(w, "Failed to send file to bucket:", http.StatusInternalServerError)
+		// fmt.Fprintf(w, "error uploading files: %+v\n", err)
 	}
 
 	fmt.Fprintf(w, "Files uploaded successfully: %+v\n", fileData.RequestHeaders.Filename)

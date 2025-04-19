@@ -31,6 +31,7 @@ func NewRepository(db *sql.DB) (*Repository, error) {
 		return nil, err
 	}
 
+	log.Println("running migrations...")
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		log.Println("error running up migration", err)
 		return nil, err
