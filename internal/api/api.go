@@ -51,12 +51,13 @@ func (s *APIServer) Start() {
 	r.Handle("/auth/logout", http.HandlerFunc(s.logout))
 
 	// functionality
-	r.Handle("/upload", s.authMiddleware(http.HandlerFunc(s.uploadHandler)))
-	r.Handle("/share", s.authMiddleware(http.HandlerFunc(s.shareWith)))
-	r.Handle("/download/{token}", s.authMiddleware(http.HandlerFunc(s.downloadThroughProxy)))
-
-	r.Handle("/user_data", s.authMiddleware(http.HandlerFunc(s.getUserData)))
-	r.Handle("/bucket_data", s.authMiddleware(http.HandlerFunc(s.getUserBucketData)))
+	r.Handle("/files/upload", s.authMiddleware(http.HandlerFunc(s.uploadHandler)))
+	r.Handle("/files/share", s.authMiddleware(http.HandlerFunc(s.shareWith)))
+	r.Handle("/files/download/{token}", http.HandlerFunc(s.downloadThroughProxy))
+	r.Handle("/files/received", s.authMiddleware(http.HandlerFunc(s.getDataSharedForUser)))
+	
+	r.Handle("/user/data", s.authMiddleware(http.HandlerFunc(s.getUserData)))
+	r.Handle("/user/bucket", s.authMiddleware(http.HandlerFunc(s.getUserBucketData)))
 
 	log.Printf("Listening on %s\n", s.listenPort)
 	http.ListenAndServe("0.0.0.0"+s.listenPort, r)

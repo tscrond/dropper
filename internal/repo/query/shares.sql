@@ -9,7 +9,9 @@ RETURNING *;
 SELECT file_id FROM shares WHERE sharing_token = $1;
 
 -- name: GetFilesSharedWithUser :many
-SELECT f.*
+SELECT
+    f.*,
+    s.*
 FROM shares s
 JOIN files f ON s.file_id = f.id
 WHERE s.shared_for = $1;

@@ -151,7 +151,7 @@ func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *filedata.
 			return err
 		}
 	}
-	log.Printf("file %s uploaded successfully and saved to the DB: %+v", fileName, file)
+	log.Printf("file %s uploaded successfully (checksum: %v)", fileName, file.Md5Checksum)
 	return nil
 }
 

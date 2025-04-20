@@ -34,21 +34,39 @@ func (q *Queries) GetBucketAndObjectFromToken(ctx context.Context, sharingToken 
 }
 
 const getFilesSharedWithUser = `-- name: GetFilesSharedWithUser :many
-SELECT f.id, f.owner_google_id, f.file_name, f.file_type, f.size, f.md5_checksum
+SELECT
+    f.id, f.owner_google_id, f.file_name, f.file_type, f.size, f.md5_checksum,
+    s.id, s.shared_by, s.shared_for, s.sharing_token, s.file_id, s.created_at, s.expires_at
 FROM shares s
 JOIN files f ON s.file_id = f.id
 WHERE s.shared_for = $1
 `
 
-func (q *Queries) GetFilesSharedWithUser(ctx context.Context, sharedFor sql.NullString) ([]File, error) {
+type GetFilesSharedWithUserRow struct {
+	ID            int32          `json:"id"`
+	OwnerGoogleID sql.NullString `json:"owner_google_id"`
+	FileName      string         `json:"file_name"`
+	FileType      sql.NullString `json:"file_type"`
+	Size          sql.NullInt64  `json:"size"`
+	Md5Checksum   string         `json:"md5_checksum"`
+	ID_2          int32          `json:"id_2"`
+	SharedBy      sql.NullString `json:"shared_by"`
+	SharedFor     sql.NullString `json:"shared_for"`
+	SharingToken  string         `json:"sharing_token"`
+	FileID        sql.NullInt32  `json:"file_id"`
+	CreatedAt     sql.NullTime   `json:"created_at"`
+	ExpiresAt     time.Time      `json:"expires_at"`
+}
+
+func (q *Queries) GetFilesSharedWithUser(ctx context.Context, sharedFor sql.NullString) ([]GetFilesSharedWithUserRow, error) {
 	rows, err := q.db.QueryContext(ctx, getFilesSharedWithUser, sharedFor)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []File
+	var items []GetFilesSharedWithUserRow
 	for rows.Next() {
-		var i File
+		var i GetFilesSharedWithUserRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OwnerGoogleID,
@@ -56,6 +74,13 @@ func (q *Queries) GetFilesSharedWithUser(ctx context.Context, sharedFor sql.Null
 			&i.FileType,
 			&i.Size,
 			&i.Md5Checksum,
+			&i.ID_2,
+			&i.SharedBy,
+			&i.SharedFor,
+			&i.SharingToken,
+			&i.FileID,
+			&i.CreatedAt,
+			&i.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}

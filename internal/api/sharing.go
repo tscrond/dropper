@@ -124,7 +124,6 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 	log.Println(sharingToken)
 
 	// 1.5 check token expiration times
-
 	expiresAt, err := s.repository.Queries.GetTokenExpirationTime(ctx, sharingToken)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -165,7 +164,6 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 2.5 get the bucket of shared resource + get the object name
-
 	bucketAndObject, err := s.repository.Queries.GetBucketAndObjectFromToken(ctx, sharingToken)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -192,12 +190,9 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// 4. stream the file
-
+	// 4. stream the file contents to the writer
 	resp, err := http.Get(signedUrl)
-	// if err != nil || resp.StatusCode != http.StatusOK {
-	if err != nil {
-		log.Println("dupaaaaaaaaaaaa:", err)
+	if err != nil || resp.StatusCode != http.StatusOK {
 		w.WriteHeader(http.StatusInternalServerError)
 		JSON(w, map[string]any{
 			"response": "signed_url_fetch_failed",
@@ -207,7 +202,7 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 	}
 	defer resp.Body.Close()
 
-	// Copy headers (optional, like content-type, content-length)
+	// Copy headers
 	maps.Copy(w.Header(), resp.Header)
 	w.WriteHeader(http.StatusOK)
 
@@ -222,4 +217,66 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 		})
 		return
 	}
+}
+
+func (s *APIServer) getDataSharedForUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusBadRequest)
+		JSON(w, map[string]any{
+			"response": "bad_request",
+			"code":     http.StatusBadRequest,
+		})
+		return
+	}
+
+	authorizedUserData := ctx.Value(userdata.AuthorizedUserContextKey)
+	authUserData, ok := authorizedUserData.(*userdata.AuthorizedUserInfo)
+	if !ok {
+		log.Println("cannot read authorized user data")
+		return
+	}
+
+	sharedFor := sql.NullString{Valid: true, String: authUserData.Email}
+	filesShared, err := s.repository.Queries.GetFilesSharedWithUser(ctx, sharedFor)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		JSON(w, map[string]any{
+			"response": "internal_error",
+			"code":     http.StatusInternalServerError,
+		})
+	}
+
+	filesSharedPrep := prepSharedFilesFormat(filesShared)
+
+	w.WriteHeader(http.StatusOK)
+	JSON(w, map[string]any{
+		"response": "ok",
+		"code":     http.StatusOK,
+		"files":    filesSharedPrep,
+	})
+}
+
+func prepSharedFilesFormat(sharedFiles []sqlc.GetFilesSharedWithUserRow) []any {
+
+	var allfiles []any
+	for _, sharedFile := range sharedFiles {
+
+		savedData := make(map[string]any)
+
+		savedData["file_id"] = sharedFile.FileID.Int32
+		savedData["owner_google_id"] = sharedFile.OwnerGoogleID.String
+		savedData["file_name"] = sharedFile.FileName
+		savedData["file_type"] = sharedFile.FileType.String
+		savedData["md5_checksum"] = sharedFile.Md5Checksum
+		savedData["shared_by"] = sharedFile.SharedBy.String
+		savedData["sharing_token"] = sharedFile.SharingToken
+		savedData["expires_at"] = sharedFile.ExpiresAt
+
+		allfiles = append(allfiles, savedData)
+	}
+
+	return allfiles
 }
