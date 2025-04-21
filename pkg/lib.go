@@ -1,6 +1,8 @@
 package pkg
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -29,4 +31,12 @@ func LoadServiceAccount(path string) (email string, privateKey []byte, err error
 	}
 
 	return creds.ClientEmail, []byte(creds.PrivateKey), nil
+}
+
+func RandToken(n int) (string, error) {
+	bytes := make([]byte, n)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }

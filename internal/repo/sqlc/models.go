@@ -6,6 +6,7 @@ package sqlc
 
 import (
 	"database/sql"
+	"time"
 )
 
 type File struct {
@@ -18,16 +19,18 @@ type File struct {
 }
 
 type Share struct {
-	ID          int32          `json:"id"`
-	SharedBy    sql.NullString `json:"shared_by"`
-	SharedFor   sql.NullString `json:"shared_for"`
-	FileID      sql.NullInt32  `json:"file_id"`
-	SharingLink sql.NullString `json:"sharing_link"`
-	CreatedAt   sql.NullTime   `json:"created_at"`
+	ID           int32          `json:"id"`
+	SharedBy     sql.NullString `json:"shared_by"`
+	SharedFor    sql.NullString `json:"shared_for"`
+	SharingToken string         `json:"sharing_token"`
+	FileID       sql.NullInt32  `json:"file_id"`
+	CreatedAt    sql.NullTime   `json:"created_at"`
+	ExpiresAt    time.Time      `json:"expires_at"`
 }
 
 type User struct {
-	GoogleID  string         `json:"google_id"`
-	UserName  sql.NullString `json:"user_name"`
-	UserEmail string         `json:"user_email"`
+	GoogleID   string         `json:"google_id"`
+	UserName   sql.NullString `json:"user_name"`
+	UserEmail  string         `json:"user_email"`
+	UserBucket sql.NullString `json:"user_bucket"`
 }

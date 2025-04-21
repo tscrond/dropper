@@ -44,19 +44,20 @@ func (s *APIServer) Start() {
 
 	r.Use(c.Handler)
 
-	// functionality
-	r.Handle("/upload", s.authMiddleware(http.HandlerFunc(s.uploadHandler)))
-
 	// auth
 	r.Handle("/auth/callback", http.HandlerFunc(s.authCallback))
 	r.Handle("/auth/oauth", http.HandlerFunc(s.oauthHandler))
 	r.Handle("/auth/is_valid", http.HandlerFunc(s.isValid))
 	r.Handle("/auth/logout", http.HandlerFunc(s.logout))
 
-	// data ops
-	r.Handle("/user_data", s.authMiddleware(http.HandlerFunc(s.getUserData)))
-	r.Handle("/bucket", s.authMiddleware(http.HandlerFunc(s.getUserBucketData)))
-	r.Handle("/share_with", s.authMiddleware(http.HandlerFunc(s.shareWith)))
+	// functionality
+	r.Handle("/files/upload", s.authMiddleware(http.HandlerFunc(s.uploadHandler)))
+	r.Handle("/files/share", s.authMiddleware(http.HandlerFunc(s.shareWith)))
+	r.Handle("/d/{token}", http.HandlerFunc(s.downloadThroughProxy))
+	r.Handle("/files/received", s.authMiddleware(http.HandlerFunc(s.getDataSharedForUser)))
+
+	r.Handle("/user/data", s.authMiddleware(http.HandlerFunc(s.getUserData)))
+	r.Handle("/user/bucket", s.authMiddleware(http.HandlerFunc(s.getUserBucketData)))
 
 	log.Printf("Listening on %s\n", s.listenPort)
 	http.ListenAndServe("0.0.0.0"+s.listenPort, r)

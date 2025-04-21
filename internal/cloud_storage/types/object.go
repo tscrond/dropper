@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"time"
 
 	"github.com/tscrond/dropper/internal/filedata"
 )
@@ -12,6 +13,7 @@ type ObjectStorage interface {
 	CreateBucketIfNotExists(ctx context.Context, userId string) error
 	GetUserBucketData(ctx context.Context, id string) (any, error)
 	GetUserBucketName(ctx context.Context) (string, error)
-	GenerateSignedURL(ctx context.Context, bucket, object string) (string, error)
+	GetBucketBaseName() string
+	GenerateSignedURL(ctx context.Context, bucket, object string, expiresAt time.Time) (string, error)
 	Close() error
 }
