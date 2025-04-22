@@ -17,59 +17,6 @@ import (
 	"github.com/tscrond/dropper/pkg"
 )
 
-// func (s *APIServer) shareWith(w http.ResponseWriter, r *http.Request) {
-// 	if r.Method != http.MethodPost {
-// 		JSON(w, map[string]any{
-// 			"response": "bad_request",
-// 			"code":     http.StatusBadRequest,
-// 		})
-// 		return
-// 	}
-
-// 	ctx := r.Context()
-
-// 	bucket, err := s.bucketHandler.GetUserBucketName(ctx)
-// 	if err != nil {
-// 		JSON(w, map[string]any{
-// 			"response":      "internal_error",
-// 			"code":          http.StatusInternalServerError,
-// 			"authenticated": false,
-// 		})
-// 		return
-// 	}
-
-// 	// parse data of logged in user
-// 	authorizedUserData := ctx.Value(userdata.AuthorizedUserContextKey)
-// 	authUserData, ok := authorizedUserData.(*userdata.AuthorizedUserInfo)
-// 	if !ok {
-// 		log.Println("cannot read authorized user data")
-// 		return
-// 	}
-
-// 	forUser := r.URL.Query().Get("email")
-// 	fmt.Println(forUser)
-// 	object := r.URL.Query().Get("object")
-
-// 	fmt.Println(object)
-
-// 	signedURL, err := s.bucketHandler.GenerateSignedURL(ctx, bucket, object)
-// 	if err != nil {
-// 		log.Println("error inserting new share entry: ", err)
-// 		JSON(w, map[string]any{
-// 			"response":      "internal_error",
-// 			"code":          http.StatusInternalServerError,
-// 			"authenticated": false,
-// 		})
-// 		return
-// 	}
-
-// 	JSON(w, map[string]any{
-// 		"response":   "ok",
-// 		"code":       http.StatusOK,
-// 		"signed_url": signedURL,
-// 	})
-// }
-
 func (s *APIServer) shareWith(w http.ResponseWriter, r *http.Request) {
 	// 0*. generate the access token (include token in shares db table - /share endpoint)
 	// * this step is done in /share endpoint exclusively
