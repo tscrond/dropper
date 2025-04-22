@@ -10,12 +10,13 @@ import (
 )
 
 type File struct {
-	ID            int32          `json:"id"`
-	OwnerGoogleID sql.NullString `json:"owner_google_id"`
-	FileName      string         `json:"file_name"`
-	FileType      sql.NullString `json:"file_type"`
-	Size          sql.NullInt64  `json:"size"`
-	Md5Checksum   string         `json:"md5_checksum"`
+	ID                   int32          `json:"id"`
+	OwnerGoogleID        sql.NullString `json:"owner_google_id"`
+	FileName             string         `json:"file_name"`
+	FileType             sql.NullString `json:"file_type"`
+	Size                 sql.NullInt64  `json:"size"`
+	Md5Checksum          string         `json:"md5_checksum"`
+	PrivateDownloadToken sql.NullString `json:"private_download_token"`
 }
 
 type Share struct {

@@ -25,5 +25,17 @@ JOIN files f ON s.file_id = f.id
 JOIN users u ON f.owner_google_id = u.google_id
 WHERE s.sharing_token = $1;
 
+-- name: GetFileFromPrivateToken :one
+SELECT * FROM files WHERE private_download_token = $1;
+
+-- name: GetBucketObjectAndOwnerFromPrivateToken :one
+SELECT
+    u.user_bucket AS bucket_name,
+    f.owner_google_id AS owner_google_id,
+    f.file_name AS object_name
+FROM files f
+JOIN users u ON f.owner_google_id = u.google_id
+WHERE f.private_download_token = $1;
+
 -- name: GetTokenExpirationTime :one
 SELECT expires_at FROM shares WHERE sharing_token = $1;

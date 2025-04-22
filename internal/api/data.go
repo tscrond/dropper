@@ -68,3 +68,32 @@ func (s *APIServer) getUserBucketData(w http.ResponseWriter, r *http.Request) {
 		"bucket_data": bucketData,
 	})
 }
+
+func (s *APIServer) getUserPrivateFileByName(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		JSON(w, map[string]any{
+			"response":    "bad_request",
+			"code":        http.StatusBadRequest,
+			"bucket_data": nil,
+		})
+		return
+	}
+	ctx := r.Context()
+
+	fileName := r.URL.Query().Get("file")
+
+	downloadToken, err := s.repository.Queries.GetPrivateDownloadTokenByFileName(ctx, fileName)
+	if err != nil {
+		JSON(w, map[string]any{
+			"response": "internal_error",
+			"code":     http.StatusInternalServerError,
+		})
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	JSON(w, map[string]any{
+		"response":               "ok",
+		"code":                   http.StatusOK,
+		"private_download_token": downloadToken.String,
+	})
+}

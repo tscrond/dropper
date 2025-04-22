@@ -11,7 +11,7 @@ import (
 )
 
 const getFileById = `-- name: GetFileById :one
-SELECT id, owner_google_id, file_name, file_type, size, md5_checksum FROM files WHERE id = $1
+SELECT id, owner_google_id, file_name, file_type, size, md5_checksum, private_download_token FROM files WHERE id = $1
 `
 
 func (q *Queries) GetFileById(ctx context.Context, id int32) (File, error) {
@@ -24,6 +24,7 @@ func (q *Queries) GetFileById(ctx context.Context, id int32) (File, error) {
 		&i.FileType,
 		&i.Size,
 		&i.Md5Checksum,
+		&i.PrivateDownloadToken,
 	)
 	return i, err
 }
@@ -51,8 +52,19 @@ func (q *Queries) GetFileByOwnerAndName(ctx context.Context, arg GetFileByOwnerA
 	return i, err
 }
 
+const getFileIdFromToken = `-- name: GetFileIdFromToken :one
+SELECT id FROM files WHERE private_download_token = $1
+`
+
+func (q *Queries) GetFileIdFromToken(ctx context.Context, privateDownloadToken sql.NullString) (int32, error) {
+	row := q.db.QueryRowContext(ctx, getFileIdFromToken, privateDownloadToken)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getFilesByOwner = `-- name: GetFilesByOwner :many
-SELECT id, owner_google_id, file_name, file_type, size, md5_checksum FROM files WHERE owner_google_id = $1
+SELECT id, owner_google_id, file_name, file_type, size, md5_checksum, private_download_token FROM files WHERE owner_google_id = $1
 `
 
 func (q *Queries) GetFilesByOwner(ctx context.Context, ownerGoogleID sql.NullString) ([]File, error) {
@@ -71,6 +83,7 @@ func (q *Queries) GetFilesByOwner(ctx context.Context, ownerGoogleID sql.NullStr
 			&i.FileType,
 			&i.Size,
 			&i.Md5Checksum,
+			&i.PrivateDownloadToken,
 		); err != nil {
 			return nil, err
 		}
@@ -86,18 +99,19 @@ func (q *Queries) GetFilesByOwner(ctx context.Context, ownerGoogleID sql.NullStr
 }
 
 const insertFile = `-- name: InsertFile :one
-INSERT INTO files (owner_google_id, file_name, file_type, size, md5_checksum)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO files (owner_google_id, file_name, file_type, size, md5_checksum, private_download_token)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (owner_google_id, md5_checksum) DO NOTHING
-RETURNING id, owner_google_id, file_name, file_type, size, md5_checksum
+RETURNING id, owner_google_id, file_name, file_type, size, md5_checksum, private_download_token
 `
 
 type InsertFileParams struct {
-	OwnerGoogleID sql.NullString `json:"owner_google_id"`
-	FileName      string         `json:"file_name"`
-	FileType      sql.NullString `json:"file_type"`
-	Size          sql.NullInt64  `json:"size"`
-	Md5Checksum   string         `json:"md5_checksum"`
+	OwnerGoogleID        sql.NullString `json:"owner_google_id"`
+	FileName             string         `json:"file_name"`
+	FileType             sql.NullString `json:"file_type"`
+	Size                 sql.NullInt64  `json:"size"`
+	Md5Checksum          string         `json:"md5_checksum"`
+	PrivateDownloadToken sql.NullString `json:"private_download_token"`
 }
 
 func (q *Queries) InsertFile(ctx context.Context, arg InsertFileParams) (File, error) {
@@ -107,6 +121,7 @@ func (q *Queries) InsertFile(ctx context.Context, arg InsertFileParams) (File, e
 		arg.FileType,
 		arg.Size,
 		arg.Md5Checksum,
+		arg.PrivateDownloadToken,
 	)
 	var i File
 	err := row.Scan(
@@ -116,6 +131,7 @@ func (q *Queries) InsertFile(ctx context.Context, arg InsertFileParams) (File, e
 		&i.FileType,
 		&i.Size,
 		&i.Md5Checksum,
+		&i.PrivateDownloadToken,
 	)
 	return i, err
 }

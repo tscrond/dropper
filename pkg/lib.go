@@ -2,10 +2,12 @@ package pkg
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 )
 
 func GetUserBucketName(bucketBaseName, userID string) string {
@@ -39,4 +41,25 @@ func RandToken(n int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(bytes), nil
+}
+
+func GenerateSecureTokenFromID(id int64) (string, error) {
+	// Convert the ID to string
+	idStr := strconv.FormatInt(id, 10)
+
+	// Generate 32 random bytes
+	randBytes := make([]byte, 32)
+	_, err := rand.Read(randBytes)
+	if err != nil {
+		return "", err
+	}
+
+	// Mix the ID and the random bytes together
+	combined := append([]byte(idStr), randBytes...)
+
+	// Hash the result to create a fixed-length string
+	hash := sha256.Sum256(combined)
+
+	// Convert to a 64-character hex string
+	return hex.EncodeToString(hash[:]), nil
 }

@@ -9,6 +9,7 @@ import (
 	"html"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 
@@ -127,12 +128,21 @@ func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *filedata.
 		return err
 	}
 
+	// temporary fix
+	randInt := rand.Int63()
+
+	privateDownloadToken, err := pkg.GenerateSecureTokenFromID(randInt)
+	if err != nil {
+		log.Println("err generating token: ", err)
+		return err
+	}
 	insertArgs := sqlc.InsertFileParams{
-		OwnerGoogleID: sql.NullString{Valid: true, String: authUserData.Id},
-		FileName:      fileName,
-		FileType:      sql.NullString{Valid: true, String: objAttrs.ContentType},
-		Size:          sql.NullInt64{Valid: true, Int64: objAttrs.Size},
-		Md5Checksum:   string(hex.EncodeToString(objAttrs.MD5)),
+		OwnerGoogleID:        sql.NullString{Valid: true, String: authUserData.Id},
+		FileName:             fileName,
+		FileType:             sql.NullString{Valid: true, String: objAttrs.ContentType},
+		Size:                 sql.NullInt64{Valid: true, Int64: objAttrs.Size},
+		Md5Checksum:          string(hex.EncodeToString(objAttrs.MD5)),
+		PrivateDownloadToken: sql.NullString{Valid: true, String: privateDownloadToken},
 	}
 
 	// ensure the object data is saved to DB if it does not exist
