@@ -8,6 +8,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
+	"github.com/tscrond/dropper/internal/repo/migrationhelper"
 	sqlc "github.com/tscrond/dropper/internal/repo/sqlc"
 )
 
@@ -31,9 +32,13 @@ func NewRepository(db *sql.DB) (*Repository, error) {
 		return nil, err
 	}
 
-	log.Println("running migrations...")
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Println("error running up migration", err)
+	migrations, err := migrationhelper.NewMigrator(db, m, queries)
+	if err != nil {
+		log.Println("error running migration helper:", err)
+		return nil, err
+	}
+
+	if err := migrations.Migrate(); err != nil {
 		return nil, err
 	}
 

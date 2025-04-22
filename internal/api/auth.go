@@ -81,6 +81,7 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure:   IsProd,
 		Path:     "/",
+		Expires:  time.Now().Add(24 * time.Hour),
 	}
 	http.SetCookie(w, sessionCookie)
 

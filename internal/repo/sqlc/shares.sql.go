@@ -33,9 +33,51 @@ func (q *Queries) GetBucketAndObjectFromToken(ctx context.Context, sharingToken 
 	return i, err
 }
 
+const getBucketObjectAndOwnerFromPrivateToken = `-- name: GetBucketObjectAndOwnerFromPrivateToken :one
+SELECT
+    u.user_bucket AS bucket_name,
+    f.owner_google_id AS owner_google_id,
+    f.file_name AS object_name
+FROM files f
+JOIN users u ON f.owner_google_id = u.google_id
+WHERE f.private_download_token = $1
+`
+
+type GetBucketObjectAndOwnerFromPrivateTokenRow struct {
+	BucketName    sql.NullString `json:"bucket_name"`
+	OwnerGoogleID sql.NullString `json:"owner_google_id"`
+	ObjectName    string         `json:"object_name"`
+}
+
+func (q *Queries) GetBucketObjectAndOwnerFromPrivateToken(ctx context.Context, privateDownloadToken sql.NullString) (GetBucketObjectAndOwnerFromPrivateTokenRow, error) {
+	row := q.db.QueryRowContext(ctx, getBucketObjectAndOwnerFromPrivateToken, privateDownloadToken)
+	var i GetBucketObjectAndOwnerFromPrivateTokenRow
+	err := row.Scan(&i.BucketName, &i.OwnerGoogleID, &i.ObjectName)
+	return i, err
+}
+
+const getFileFromPrivateToken = `-- name: GetFileFromPrivateToken :one
+SELECT id, owner_google_id, file_name, file_type, size, md5_checksum, private_download_token FROM files WHERE private_download_token = $1
+`
+
+func (q *Queries) GetFileFromPrivateToken(ctx context.Context, privateDownloadToken sql.NullString) (File, error) {
+	row := q.db.QueryRowContext(ctx, getFileFromPrivateToken, privateDownloadToken)
+	var i File
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerGoogleID,
+		&i.FileName,
+		&i.FileType,
+		&i.Size,
+		&i.Md5Checksum,
+		&i.PrivateDownloadToken,
+	)
+	return i, err
+}
+
 const getFilesSharedWithUser = `-- name: GetFilesSharedWithUser :many
 SELECT
-    f.id, f.owner_google_id, f.file_name, f.file_type, f.size, f.md5_checksum,
+    f.id, f.owner_google_id, f.file_name, f.file_type, f.size, f.md5_checksum, f.private_download_token,
     s.id, s.shared_by, s.shared_for, s.sharing_token, s.file_id, s.created_at, s.expires_at
 FROM shares s
 JOIN files f ON s.file_id = f.id
@@ -43,19 +85,20 @@ WHERE s.shared_for = $1
 `
 
 type GetFilesSharedWithUserRow struct {
-	ID            int32          `json:"id"`
-	OwnerGoogleID sql.NullString `json:"owner_google_id"`
-	FileName      string         `json:"file_name"`
-	FileType      sql.NullString `json:"file_type"`
-	Size          sql.NullInt64  `json:"size"`
-	Md5Checksum   string         `json:"md5_checksum"`
-	ID_2          int32          `json:"id_2"`
-	SharedBy      sql.NullString `json:"shared_by"`
-	SharedFor     sql.NullString `json:"shared_for"`
-	SharingToken  string         `json:"sharing_token"`
-	FileID        sql.NullInt32  `json:"file_id"`
-	CreatedAt     sql.NullTime   `json:"created_at"`
-	ExpiresAt     time.Time      `json:"expires_at"`
+	ID                   int32          `json:"id"`
+	OwnerGoogleID        sql.NullString `json:"owner_google_id"`
+	FileName             string         `json:"file_name"`
+	FileType             sql.NullString `json:"file_type"`
+	Size                 sql.NullInt64  `json:"size"`
+	Md5Checksum          string         `json:"md5_checksum"`
+	PrivateDownloadToken sql.NullString `json:"private_download_token"`
+	ID_2                 int32          `json:"id_2"`
+	SharedBy             sql.NullString `json:"shared_by"`
+	SharedFor            sql.NullString `json:"shared_for"`
+	SharingToken         string         `json:"sharing_token"`
+	FileID               sql.NullInt32  `json:"file_id"`
+	CreatedAt            sql.NullTime   `json:"created_at"`
+	ExpiresAt            time.Time      `json:"expires_at"`
 }
 
 func (q *Queries) GetFilesSharedWithUser(ctx context.Context, sharedFor sql.NullString) ([]GetFilesSharedWithUserRow, error) {
@@ -74,6 +117,7 @@ func (q *Queries) GetFilesSharedWithUser(ctx context.Context, sharedFor sql.Null
 			&i.FileType,
 			&i.Size,
 			&i.Md5Checksum,
+			&i.PrivateDownloadToken,
 			&i.ID_2,
 			&i.SharedBy,
 			&i.SharedFor,
