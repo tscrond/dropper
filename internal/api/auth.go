@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/tscrond/dropper/internal/mappings"
 	"github.com/tscrond/dropper/internal/repo/sqlc"
 	"github.com/tscrond/dropper/internal/userdata"
 	"golang.org/x/oauth2"
@@ -85,6 +87,7 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, sessionCookie)
 
+	// create/update new user if not exists
 	username := sql.NullString{String: jsonResp.Name, Valid: true}
 	userBucket := sql.NullString{
 		String: fmt.Sprintf("%s-%s", s.bucketHandler.GetBucketBaseName(), jsonResp.Id),
@@ -98,11 +101,83 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 		UserEmail:  jsonResp.Email,
 		UserBucket: userBucket,
 	}); err != nil {
-
 		http.Redirect(w, r, s.frontendEndpoint, http.StatusInternalServerError)
 	}
 
+	log.Printf("USER ID: %s", jsonResp.Id)
+	if err := s.syncDatabaseWithBucket(jsonResp.Id); err != nil {
+		log.Println("error syncing the DB: ", err)
+	} else {
+		log.Println("database sync with remote buckets succeeded!")
+	}
+
 	http.Redirect(w, r, s.frontendEndpoint, http.StatusTemporaryRedirect)
+}
+
+func (s *APIServer) syncDatabaseWithBucket(googleUserID string) error {
+	// sync strategy:
+	// 1. check objects in db
+	// 2. check objects in GCS
+	// 3. diff GCS to DB
+	// 4. fill the DB with diff between GCS
+	// parse data of logged in user
+
+	ctx := context.Background()
+
+	// 1. check objects in the db
+	filesFromDatabase, err := s.repository.Queries.GetFilesByOwner(
+		ctx,
+		sql.NullString{Valid: true, String: googleUserID},
+	)
+	if err != nil {
+		return err
+	}
+
+	// log.Println(filesFromDatabase)
+
+	// 2. get files objects from bucket handler
+	bucketDataFromObjectStore, err := s.bucketHandler.GetUserBucketData(ctx, googleUserID)
+	if err != nil {
+		return err
+	}
+
+	// 3. map any type to *mappings.BucketData
+	bucketDataMapped, ok := bucketDataFromObjectStore.(*mappings.BucketData)
+	if !ok {
+		log.Println("guwno", bucketDataMapped)
+		return errors.New("cannot map bucket data")
+	}
+
+	// 4. transform mapped data to []sqlc.File format
+	filesFromBuckets, err := mappings.MapBucketDataToDBFormat(googleUserID, bucketDataMapped)
+	if err != nil {
+		log.Println("guwno", bucketDataMapped.StorageClass)
+		return errors.New("cannot map bucket data to db format")
+	}
+
+	// 5. check if the DB has missing records, if yes - return them as []sqlc.File
+	diffFiles := mappings.FindMissingFilesFromDB(filesFromBuckets, filesFromDatabase)
+	log.Printf("missing files in the DB %+v\n", diffFiles)
+
+	// 6. fill the missing records
+	for _, f := range diffFiles {
+		insertArgs := sqlc.InsertFileParams{
+			OwnerGoogleID:        f.OwnerGoogleID,
+			FileName:             f.FileName,
+			FileType:             f.FileType,
+			Size:                 f.Size,
+			Md5Checksum:          f.Md5Checksum,
+			PrivateDownloadToken: f.PrivateDownloadToken,
+		}
+
+		_, err := s.repository.Queries.InsertFile(ctx, insertArgs)
+		if err != nil {
+			log.Println("errors syncing the DB (filling missing records): ", err)
+			continue
+		}
+
+	}
+	return nil
 }
 
 func (s *APIServer) authMiddleware(next http.Handler) http.Handler {

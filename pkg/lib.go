@@ -63,3 +63,21 @@ func GenerateSecureTokenFromID(id int64) (string, error) {
 	// Convert to a 64-character hex string
 	return hex.EncodeToString(hash[:]), nil
 }
+
+func GenerateSecureTokenFromIDStr(idStr string) (string, error) {
+	// Generate 32 random bytes
+	randBytes := make([]byte, 32)
+	_, err := rand.Read(randBytes)
+	if err != nil {
+		return "", err
+	}
+
+	// Mix the ID and the random bytes together
+	combined := append([]byte(idStr), randBytes...)
+
+	// Hash the result to create a fixed-length string
+	hash := sha256.Sum256(combined)
+
+	// Convert to a 64-character hex string
+	return hex.EncodeToString(hash[:]), nil
+}

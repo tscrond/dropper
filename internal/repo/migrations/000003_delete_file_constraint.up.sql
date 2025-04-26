@@ -1,0 +1,1 @@
+ALTER TABLE files DROP CONSTRAINT files_owner_google_id_md5_checksum_key;

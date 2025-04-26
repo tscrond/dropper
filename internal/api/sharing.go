@@ -3,7 +3,6 @@ package api
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -208,7 +207,7 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 		return
 	}
 
-	fmt.Println(signedUrl)
+	// fmt.Println(signedUrl)
 
 	// 4. stream the file contents to the writer
 	resp, err := http.Get(signedUrl)
