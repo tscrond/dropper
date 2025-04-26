@@ -17,6 +17,7 @@ import (
 
 	"github.com/tscrond/dropper/internal/cloud_storage/types"
 	"github.com/tscrond/dropper/internal/filedata"
+	"github.com/tscrond/dropper/internal/mappings"
 	"github.com/tscrond/dropper/internal/repo"
 	"github.com/tscrond/dropper/internal/repo/sqlc"
 	"github.com/tscrond/dropper/internal/userdata"
@@ -209,7 +210,7 @@ func (b *GCSBucketHandler) CreateBucketIfNotExists(ctx context.Context, userId s
 	return nil
 }
 
-func (b *GCSBucketHandler) getBucketAttrs(ctx context.Context, bucketName string) (*BucketData, error) {
+func (b *GCSBucketHandler) getBucketAttrs(ctx context.Context, bucketName string) (*mappings.BucketData, error) {
 	bucketDataAttrs, err := b.Client.Bucket(bucketName).Attrs(ctx)
 	if err != nil {
 		return nil, err
@@ -222,7 +223,7 @@ func (b *GCSBucketHandler) getBucketAttrs(ctx context.Context, bucketName string
 		}
 	}
 
-	return &BucketData{
+	return &mappings.BucketData{
 		BucketName:   bucketDataAttrs.Name,
 		StorageClass: bucketDataAttrs.StorageClass,
 		TimeCreated:  bucketDataAttrs.Created,
@@ -230,8 +231,8 @@ func (b *GCSBucketHandler) getBucketAttrs(ctx context.Context, bucketName string
 	}, nil
 }
 
-func (b *GCSBucketHandler) getObjectsAttrs(ctx context.Context, bucketName string) ([]ObjectMedatata, error) {
-	var objects []ObjectMedatata
+func (b *GCSBucketHandler) getObjectsAttrs(ctx context.Context, bucketName string) ([]mappings.ObjectMedatata, error) {
+	var objects []mappings.ObjectMedatata
 	it := b.Client.Bucket(bucketName).Objects(ctx, nil)
 	for {
 		objAttrs, err := it.Next()
@@ -244,7 +245,7 @@ func (b *GCSBucketHandler) getObjectsAttrs(ctx context.Context, bucketName strin
 		}
 		// log.Printf("%+v\n", objAttrs)
 
-		objects = append(objects, ObjectMedatata{
+		objects = append(objects, mappings.ObjectMedatata{
 			Name:        objAttrs.Name,
 			ContentType: objAttrs.ContentType,
 			Created:     objAttrs.Created,
@@ -260,8 +261,8 @@ func (b *GCSBucketHandler) getObjectsAttrs(ctx context.Context, bucketName strin
 	return objects, nil
 }
 
-func (b *GCSBucketHandler) getObjectsAttrsByObjName(ctx context.Context, bucketName, objName string) (*ObjectMedatata, error) {
-	var selectedObj *ObjectMedatata
+func (b *GCSBucketHandler) getObjectsAttrsByObjName(ctx context.Context, bucketName, objName string) (*mappings.ObjectMedatata, error) {
+	var selectedObj *mappings.ObjectMedatata
 	objects, err := b.getObjectsAttrs(ctx, bucketName)
 	if err != nil {
 		log.Println("error getting objects attributes", err)

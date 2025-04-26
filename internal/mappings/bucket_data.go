@@ -1,4 +1,4 @@
-package gcs
+package mappings
 
 import "time"
 

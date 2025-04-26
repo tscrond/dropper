@@ -58,6 +58,7 @@ func (s *APIServer) Start() {
 	r.Handle("/d/private/{token}", s.authMiddleware(http.HandlerFunc(s.downloadThroughProxyPersonal)))
 	r.Handle("/d/{token}", http.HandlerFunc(s.downloadThroughProxy))
 
+	// r.Handle("/user/bucket/sync", s.authMiddleware(http.HandlerFunc(s.syncBucket)))
 	r.Handle("/user/data", s.authMiddleware(http.HandlerFunc(s.getUserData)))
 	r.Handle("/user/bucket", s.authMiddleware(http.HandlerFunc(s.getUserBucketData)))
 	r.Handle("/user/private/download_token", s.authMiddleware(http.HandlerFunc(s.getUserPrivateFileByName)))

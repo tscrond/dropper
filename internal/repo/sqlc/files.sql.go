@@ -64,9 +64,15 @@ func (q *Queries) GetFileIdFromToken(ctx context.Context, privateDownloadToken s
 }
 
 const getFilesByOwner = `-- name: GetFilesByOwner :many
+
 SELECT id, owner_google_id, file_name, file_type, size, md5_checksum, private_download_token FROM files WHERE owner_google_id = $1
 `
 
+// -- name: InsertFileReturningID :one
+// INSERT INTO files (owner_google_id, file_name, file_type, size, md5_checksum, private_download_token)
+// VALUES ($1, $2, $3, $4, $5, $6)
+// ON CONFLICT (owner_google_id, md5_checksum) DO NOTHING
+// RETURNING id;
 func (q *Queries) GetFilesByOwner(ctx context.Context, ownerGoogleID sql.NullString) ([]File, error) {
 	rows, err := q.db.QueryContext(ctx, getFilesByOwner, ownerGoogleID)
 	if err != nil {
@@ -101,7 +107,7 @@ func (q *Queries) GetFilesByOwner(ctx context.Context, ownerGoogleID sql.NullStr
 const insertFile = `-- name: InsertFile :one
 INSERT INTO files (owner_google_id, file_name, file_type, size, md5_checksum, private_download_token)
 VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (owner_google_id, md5_checksum) DO NOTHING
+ON CONFLICT (owner_google_id, md5_checksum,file_name) DO NOTHING
 RETURNING id, owner_google_id, file_name, file_type, size, md5_checksum, private_download_token
 `
 

@@ -90,6 +90,7 @@ func (s *APIServer) getUserPrivateFileByName(w http.ResponseWriter, r *http.Requ
 		})
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
 	JSON(w, map[string]any{
 		"response":               "ok",
