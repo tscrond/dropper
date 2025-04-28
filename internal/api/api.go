@@ -57,7 +57,7 @@ func (s *APIServer) Start() {
 	r.Handle("/files/received", s.authMiddleware(http.HandlerFunc(s.getDataSharedForUser)))
 	r.Handle("/files/shared_by_user", s.authMiddleware(http.HandlerFunc(s.getDataSharedByUser)))
 	r.Handle("/files/delete", s.authMiddleware(http.HandlerFunc(s.deleteFile)))
-	
+
 	r.Handle("/d/private/{token}", s.authMiddleware(http.HandlerFunc(s.downloadThroughProxyPersonal)))
 	r.Handle("/d/{token}", http.HandlerFunc(s.downloadThroughProxy))
 
@@ -65,6 +65,7 @@ func (s *APIServer) Start() {
 	r.Handle("/user/data", s.authMiddleware(http.HandlerFunc(s.getUserData)))
 	r.Handle("/user/bucket", s.authMiddleware(http.HandlerFunc(s.getUserBucketData)))
 	r.Handle("/user/private/download_token", s.authMiddleware(http.HandlerFunc(s.getUserPrivateFileByName)))
+	r.Handle("/user/account/delete", s.authMiddleware(http.HandlerFunc(s.deleteAccount)))
 
 	log.Printf("Listening on %s\n", s.listenPort)
 	http.ListenAndServe("0.0.0.0"+s.listenPort, r)

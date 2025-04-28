@@ -33,6 +33,22 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
+const deleteAccount = `-- name: DeleteAccount :one
+DELETE FROM users WHERE google_id = $1 RETURNING google_id, user_name, user_email, user_bucket
+`
+
+func (q *Queries) DeleteAccount(ctx context.Context, googleID string) (User, error) {
+	row := q.db.QueryRowContext(ctx, deleteAccount, googleID)
+	var i User
+	err := row.Scan(
+		&i.GoogleID,
+		&i.UserName,
+		&i.UserEmail,
+		&i.UserBucket,
+	)
+	return i, err
+}
+
 const getUserBucketById = `-- name: GetUserBucketById :one
 SELECT user_bucket FROM users WHERE google_id = $1
 `

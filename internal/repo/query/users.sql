@@ -14,3 +14,6 @@ SELECT user_bucket FROM users WHERE google_id = $1;
 
 -- name: UpdateUserBucketNameById :exec
 UPDATE users SET user_bucket = $1 WHERE google_id = $2;
+
+-- name: DeleteAccount :one
+DELETE FROM users WHERE google_id = $1 RETURNING *;
