@@ -367,3 +367,29 @@ func (b *GCSBucketHandler) GenerateSignedURL(ctx context.Context, bucket, object
 func (b *GCSBucketHandler) GetBucketBaseName() string {
 	return b.BaseBucketName
 }
+
+func (b *GCSBucketHandler) DeleteObjectFromBucket(object, bucket string) error {
+	ctx := context.Background()
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	o := b.Client.Bucket(bucket).Object(object)
+
+	// From GCP official docs: https://cloud.google.com/storage/docs/deleting-objects
+	// Optional: set a generation-match precondition to avoid potential race
+	// conditions and data corruptions. The request to delete the file is aborted
+	// if the object's generation number does not match your precondition.
+	attrs, err := o.Attrs(ctx)
+	if err != nil {
+		return fmt.Errorf("object.Attrs: %w", err)
+	}
+	o = o.If(storage.Conditions{GenerationMatch: attrs.Generation})
+
+	if err := o.Delete(ctx); err != nil {
+		return fmt.Errorf("Object(%q).Delete: %w", object, err)
+	}
+
+	log.Printf("object deleted successfully: (%s,%s)", o.BucketName(), o.ObjectName())
+	return nil
+}

@@ -16,6 +16,14 @@ FROM shares s
 JOIN files f ON s.file_id = f.id
 WHERE s.shared_for = $1;
 
+-- name: GetFilesSharedByUser :many
+SELECT
+    f.*,
+    s.*
+FROM shares s
+JOIN files f ON s.file_id = f.id
+WHERE s.shared_by = $1;
+
 -- name: GetBucketAndObjectFromToken :one
 SELECT
 u.user_bucket,

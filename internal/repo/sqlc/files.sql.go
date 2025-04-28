@@ -10,6 +10,20 @@ import (
 	"database/sql"
 )
 
+const deleteFileByNameAndId = `-- name: DeleteFileByNameAndId :exec
+DELETE FROM files WHERE owner_google_id = $1 AND file_name = $2
+`
+
+type DeleteFileByNameAndIdParams struct {
+	OwnerGoogleID sql.NullString `json:"owner_google_id"`
+	FileName      string         `json:"file_name"`
+}
+
+func (q *Queries) DeleteFileByNameAndId(ctx context.Context, arg DeleteFileByNameAndIdParams) error {
+	_, err := q.db.ExecContext(ctx, deleteFileByNameAndId, arg.OwnerGoogleID, arg.FileName)
+	return err
+}
+
 const getFileById = `-- name: GetFileById :one
 SELECT id, owner_google_id, file_name, file_type, size, md5_checksum, private_download_token FROM files WHERE id = $1
 `

@@ -23,3 +23,6 @@ SELECT * FROM files WHERE id = $1;
 
 -- name: GetFileIdFromToken :one
 SELECT id FROM files WHERE private_download_token = $1;
+
+-- name: DeleteFileByNameAndId :exec
+DELETE FROM files WHERE owner_google_id = $1 AND file_name = $2;
