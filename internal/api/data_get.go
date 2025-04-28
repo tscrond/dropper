@@ -8,6 +8,15 @@ import (
 
 func (s *APIServer) getUserData(w http.ResponseWriter, r *http.Request) {
 
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusBadRequest)
+		JSON(w, map[string]any{
+			"response": "bad_request",
+			"code":     http.StatusBadRequest,
+		})
+		return
+	}
+
 	userData, ok := r.Context().Value(userdata.AuthorizedUserContextKey).(*userdata.AuthorizedUserInfo)
 	// fmt.Println(userData)
 	if !ok {
@@ -29,15 +38,16 @@ func (s *APIServer) getUserData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *APIServer) getUserBucketData(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	ctx := r.Context()
+
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusBadRequest)
 		JSON(w, map[string]any{
-			"response":    "bad_request",
-			"code":        http.StatusBadRequest,
-			"bucket_data": nil,
+			"response": "bad_request",
+			"code":     http.StatusBadRequest,
 		})
 		return
 	}
-	ctx := r.Context()
 
 	userData, ok := r.Context().Value(userdata.AuthorizedUserContextKey).(*userdata.AuthorizedUserInfo)
 	// fmt.Println(userData)
@@ -70,14 +80,15 @@ func (s *APIServer) getUserBucketData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *APIServer) getUserPrivateFileByName(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusBadRequest)
 		JSON(w, map[string]any{
-			"response":    "bad_request",
-			"code":        http.StatusBadRequest,
-			"bucket_data": nil,
+			"response": "bad_request",
+			"code":     http.StatusBadRequest,
 		})
 		return
 	}
+
 	ctx := r.Context()
 
 	fileName := r.URL.Query().Get("file")
