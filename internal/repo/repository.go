@@ -3,6 +3,7 @@ package repo
 import (
 	"database/sql"
 	"log"
+	"os"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -24,6 +25,16 @@ func NewRepository(db *sql.DB) (*Repository, error) {
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
 		log.Println("driver error", err)
+	}
+	cwd, _ := os.Getwd()
+	log.Println("Current working dir:", cwd)
+
+	entries, err := os.ReadDir("./internal/repo/migrations")
+	if err != nil {
+		log.Fatalf("Can't read migrations dir: %v", err)
+	}
+	for _, e := range entries {
+		log.Printf("Found migration file: %s", e.Name())
 	}
 
 	m, err := migrate.NewWithDatabaseInstance("file://internal/repo/migrations", "postgres", driver)

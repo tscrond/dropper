@@ -26,3 +26,5 @@ go.work.sum
 .envs
 bin
 tmp
+
+config/bucket-auth.json

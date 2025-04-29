@@ -15,5 +15,6 @@ FROM golang:1.24.1-alpine
 WORKDIR /dropper
 
 COPY --from=builder /dropper/dropper /dropper/dropper
+COPY --from=builder /dropper/internal/repo /dropper/internal/repo
 
 CMD [ "/dropper/dropper" ]

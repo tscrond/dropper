@@ -22,7 +22,17 @@ func main() {
 	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
 	frontendEndpoint := os.Getenv("FRONTEND_ENDPOINT")
 	backendEndpoint := os.Getenv("BACKEND_ENDPOINT")
-	connStr := os.Getenv("DB_CONNECTION_STRING")
+
+	dbHost := os.Getenv("DB_HOST")
+	dbUser := os.Getenv("POSTGRES_USER")
+	dbPassword := os.Getenv("POSTGRES_PASSWORD")
+	dbName := os.Getenv("POSTGRES_DB")
+
+	//postgres://<user>:<pass>@<dbhost>:5432/<dbname>?sslmode=disable
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=disable", dbUser, dbPassword, dbHost, dbName)
+
+	// log.Printf("db connection string: %s", connStr)
+	log.Printf("backend endpoint: %s\n frontend endpoint: %s", backendEndpoint, frontendEndpoint)
 
 	repository, err := InitRepository(connStr)
 	if err != nil {
@@ -62,7 +72,7 @@ func InitRepository(connString string) (*repo.Repository, error) {
 		panic("no conn string provided")
 	}
 
-	log.Println("conn str:", connString)
+	// log.Println("conn str:", connString)
 
 	db, err := sql.Open("postgres", connString)
 	if err != nil {
