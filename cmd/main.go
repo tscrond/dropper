@@ -24,6 +24,8 @@ func main() {
 	backendEndpoint := os.Getenv("BACKEND_ENDPOINT")
 	connStr := os.Getenv("DB_CONNECTION_STRING")
 
+	log.Printf("backend endpoint: %s\n frontend endpoint: %s", backendEndpoint, frontendEndpoint)
+
 	repository, err := InitRepository(connStr)
 	if err != nil {
 		log.Fatalln(err)
