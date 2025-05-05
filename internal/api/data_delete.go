@@ -46,7 +46,7 @@ func (s *APIServer) deleteFile(w http.ResponseWriter, r *http.Request) {
 
 	bucket := fmt.Sprintf("%s-%s", s.bucketHandler.GetBucketBaseName(), authUserData.Id)
 
-	if err := s.bucketHandler.DeleteObjectFromBucket(object, bucket); err != nil {
+	if err := s.bucketHandler.DeleteObjectFromBucket(ctx, object, bucket); err != nil {
 		log.Println("issues deleting object: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		JSON(w, map[string]any{

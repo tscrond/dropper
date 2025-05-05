@@ -368,8 +368,7 @@ func (b *GCSBucketHandler) GetBucketBaseName() string {
 	return b.BaseBucketName
 }
 
-func (b *GCSBucketHandler) DeleteObjectFromBucket(object, bucket string) error {
-	ctx := context.Background()
+func (b *GCSBucketHandler) DeleteObjectFromBucket(ctx context.Context, object, bucket string) error {
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
