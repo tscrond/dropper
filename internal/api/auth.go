@@ -27,6 +27,7 @@ func (s *APIServer) oauthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	code := r.URL.Query().Get("code")
 	if code == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -37,7 +38,7 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t, err := s.OAuthConfig.Exchange(context.Background(), code)
+	t, err := s.OAuthConfig.Exchange(ctx, code)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		JSON(w, map[string]any{
@@ -47,7 +48,7 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := s.OAuthConfig.Client(context.Background(), t)
+	client := s.OAuthConfig.Client(ctx, t)
 
 	// Getting the user public details from google API endpoint
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
@@ -95,7 +96,7 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 			return jsonResp.Id != ""
 		}(),
 	}
-	if err := s.repository.Queries.CreateUser(r.Context(), sqlc.CreateUserParams{
+	if err := s.repository.Queries.CreateUser(ctx, sqlc.CreateUserParams{
 		GoogleID:   jsonResp.Id,
 		UserName:   username,
 		UserEmail:  jsonResp.Email,
@@ -105,7 +106,7 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("USER ID: %s", jsonResp.Id)
-	if err := s.syncDatabaseWithBucket(jsonResp.Id); err != nil {
+	if err := s.syncDatabaseWithBucket(ctx, jsonResp.Id); err != nil {
 		log.Println("error syncing the DB: ", err)
 	} else {
 		log.Println("database sync with remote buckets succeeded!")
@@ -114,15 +115,13 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, s.frontendEndpoint, http.StatusTemporaryRedirect)
 }
 
-func (s *APIServer) syncDatabaseWithBucket(googleUserID string) error {
+func (s *APIServer) syncDatabaseWithBucket(ctx context.Context, googleUserID string) error {
 	// sync strategy:
 	// 1. check objects in db
 	// 2. check objects in GCS
 	// 3. diff GCS to DB
 	// 4. fill the DB with diff between GCS
 	// parse data of logged in user
-
-	ctx := context.Background()
 
 	// 1. check objects in the db
 	filesFromDatabase, err := s.repository.Queries.GetFilesByOwner(

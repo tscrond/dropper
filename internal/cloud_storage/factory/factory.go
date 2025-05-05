@@ -2,7 +2,6 @@ package factory
 
 import (
 	"errors"
-	"log"
 	"os"
 
 	"github.com/tscrond/dropper/internal/cloud_storage/gcs"
@@ -16,9 +15,6 @@ func NewStorageProvider(provider string, repository *repo.Repository) (types.Obj
 		bucketName := os.Getenv("GCS_BUCKET_NAME")
 		svcaccountPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 		googleProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-
-		log.Println("bucket base name:", bucketName)
-		log.Println("google credential file:", svcaccountPath)
 
 		return gcs.NewGCSBucketHandler(svcaccountPath, bucketName, googleProjectID, repository)
 	case "minio":
