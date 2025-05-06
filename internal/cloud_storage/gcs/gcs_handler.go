@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"net/http"
 	"os"
 	"time"
 
@@ -112,6 +113,20 @@ func (b *GCSBucketHandler) SendFileToBucket(ctx context.Context, data *filedata.
 
 	// write new object to the bucket
 	writer := b.Client.Bucket(newUserBucketName).Object(fileName).NewWriter(ctx)
+	contentType := data.RequestHeaders.Header.Get("Content-Type")
+	if contentType == "" {
+		// Fallback to detection if header missing
+		buffer := make([]byte, 512)
+		_, err := data.MultipartFile.Read(buffer)
+		if err != nil && err != io.EOF {
+			log.Println("failed to read file for content type detection:", err)
+			return err
+		}
+		data.MultipartFile.Seek(0, io.SeekStart) // rewind for actual upload
+		contentType = http.DetectContentType(buffer)
+	}
+	writer.ContentType = contentType
+	log.Println(contentType)
 	if _, err := io.Copy(writer, data.MultipartFile); err != nil {
 		log.Println("error uploading file: ", err)
 		return err

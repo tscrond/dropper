@@ -143,20 +143,18 @@ func (s *APIServer) syncDatabaseWithBucket(ctx context.Context, googleUserID str
 	// 3. map any type to *mappings.BucketData
 	bucketDataMapped, ok := bucketDataFromObjectStore.(*mappings.BucketData)
 	if !ok {
-		log.Println("guwno", bucketDataMapped)
 		return errors.New("cannot map bucket data")
 	}
 
 	// 4. transform mapped data to []sqlc.File format
 	filesFromBuckets, err := mappings.MapBucketDataToDBFormat(googleUserID, bucketDataMapped)
 	if err != nil {
-		log.Println("guwno", bucketDataMapped.StorageClass)
 		return errors.New("cannot map bucket data to db format")
 	}
 
 	// 5. check if the DB has missing records, if yes - return them as []sqlc.File
 	diffFiles := mappings.FindMissingFilesFromDB(filesFromBuckets, filesFromDatabase)
-	log.Printf("missing files in the DB %+v\n", diffFiles)
+	// log.Printf("missing files in the DB %+v\n", diffFiles)
 
 	// 6. fill the missing records
 	for _, f := range diffFiles {
