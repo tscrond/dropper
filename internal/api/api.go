@@ -7,24 +7,27 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
-	"github.com/tscrond/dropper/internal/cloud_storage/types"
+	storagetypes "github.com/tscrond/dropper/internal/cloud_storage/types"
+	mailtypes "github.com/tscrond/dropper/internal/mailservice/types"
 	"github.com/tscrond/dropper/internal/repo"
 	"golang.org/x/oauth2"
 )
 
 type APIServer struct {
 	listenPort       string
-	bucketHandler    types.ObjectStorage
+	bucketHandler    storagetypes.ObjectStorage
+	emailSender      mailtypes.EmailSender
 	repository       *repo.Repository
 	OAuthConfig      *oauth2.Config
 	frontendEndpoint string
 }
 
-func NewAPIServer(lp string, fe string, bh types.ObjectStorage, repository *repo.Repository, oauth2conf *oauth2.Config) *APIServer {
+func NewAPIServer(lp string, fe string, bh storagetypes.ObjectStorage, es mailtypes.EmailSender, repository *repo.Repository, oauth2conf *oauth2.Config) *APIServer {
 	return &APIServer{
 		listenPort:       lp,
 		frontendEndpoint: fe,
 		bucketHandler:    bh,
+		emailSender:      es,
 		repository:       repository,
 		OAuthConfig:      oauth2conf,
 	}
@@ -67,6 +70,7 @@ func (s *APIServer) Start() {
 	r.Handle("/user/private/download_token", s.authMiddleware(http.HandlerFunc(s.getUserPrivateFileByName)))
 	r.Handle("/user/account/delete", s.authMiddleware(http.HandlerFunc(s.deleteAccount)))
 
+	r.Handle("/test/email", http.HandlerFunc(s.sendEmail))
 	log.Printf("Listening on %s\n", s.listenPort)
 	http.ListenAndServe("0.0.0.0"+s.listenPort, r)
 }
