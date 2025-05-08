@@ -7,8 +7,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
-	"github.com/tscrond/dropper/internal/cloud_storage/types"
+	storagetypes "github.com/tscrond/dropper/internal/cloud_storage/types"
 	"github.com/tscrond/dropper/internal/config"
+	mailtypes "github.com/tscrond/dropper/internal/mailservice/types"
 	"github.com/tscrond/dropper/internal/repo"
 	"golang.org/x/oauth2"
 )
@@ -16,14 +17,16 @@ import (
 type APIServer struct {
 	backendConfig config.BackendConfig
 	bucketHandler types.ObjectStorage
+	emailSender   mailtypes.EmailSender
 	repository    *repo.Repository
 	OAuthConfig   *oauth2.Config
 }
 
-func NewAPIServer(backendConfig config.BackendConfig, bh types.ObjectStorage, repository *repo.Repository, oauth2conf *oauth2.Config) *APIServer {
+func NewAPIServer(backendConfig config.BackendConfig, es mailtypes.EmailSender, bh storagetypes.ObjectStorage, repository *repo.Repository, oauth2conf *oauth2.Config) *APIServer {
 	return &APIServer{
 		backendConfig: backendConfig,
 		bucketHandler: bh,
+		emailSender:   es,
 		repository:    repository,
 		OAuthConfig:   oauth2conf,
 	}
@@ -65,6 +68,7 @@ func (s *APIServer) Start() {
 	r.Handle("/user/bucket", s.authMiddleware(http.HandlerFunc(s.getUserBucketData)))
 	r.Handle("/user/private/download_token", s.authMiddleware(http.HandlerFunc(s.getUserPrivateFileByName)))
 	r.Handle("/user/account/delete", s.authMiddleware(http.HandlerFunc(s.deleteAccount)))
+	r.Handle("/test/email", http.HandlerFunc(s.sendEmail))
 
 	log.Printf("Listening on %s\n", s.backendConfig.ListenPort)
 	http.ListenAndServe("0.0.0.0"+s.backendConfig.ListenPort, r)
