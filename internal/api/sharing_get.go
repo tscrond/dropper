@@ -357,6 +357,7 @@ func prepSharedFilesFormat(sharedFiles []sqlc.GetFilesSharedWithUserRow) []any {
 		savedData["shared_for"] = sharedFile.SharedFor.String
 		savedData["sharing_token"] = sharedFile.SharingToken
 		savedData["expires_at"] = sharedFile.ExpiresAt
+		savedData["size"] = sharedFile.Size.Int64
 
 		allfiles = append(allfiles, savedData)
 	}
@@ -381,6 +382,7 @@ func prepSharedByFilesFormat(sharedFiles []sqlc.GetFilesSharedByUserRow) []any {
 		savedData["shared_for"] = sharedFile.SharedFor.String
 		savedData["sharing_token"] = sharedFile.SharingToken
 		savedData["expires_at"] = sharedFile.ExpiresAt
+		savedData["size"] = sharedFile.Size.Int64
 
 		allfiles = append(allfiles, savedData)
 	}
