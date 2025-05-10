@@ -46,14 +46,9 @@ func (s *APIServer) deleteFile(w http.ResponseWriter, r *http.Request) {
 
 	bucket := fmt.Sprintf("%s-%s", s.bucketHandler.GetBucketBaseName(), authUserData.Id)
 
+	// dont fail if object does not exist, just report the error
 	if err := s.bucketHandler.DeleteObjectFromBucket(ctx, object, bucket); err != nil {
 		log.Println("issues deleting object: ", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "authorization_failed",
-			"code":     http.StatusInternalServerError,
-		})
-		return
 	}
 
 	if err := s.repository.Queries.DeleteFileByNameAndId(ctx, sqlc.DeleteFileByNameAndIdParams{

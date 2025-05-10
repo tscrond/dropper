@@ -61,6 +61,13 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 	disposition := "attachment"       // default behavior
 	if mode == "inline" {
 		disposition = "inline"
+	} else if mode != "download" && mode != "" {
+		w.WriteHeader(http.StatusInternalServerError)
+		JSON(w, map[string]any{
+			"response": "invalid_download_mode",
+			"code":     http.StatusInternalServerError,
+		})
+		return
 	}
 
 	// 2. check if token exists, if exists, return file ID
@@ -131,7 +138,9 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 
 	// Copy headers
 	maps.Copy(w.Header(), resp.Header)
+
 	w.Header().Set("Content-Disposition", fmt.Sprintf("%s; filename=%q", disposition, bucketAndObjectRow.ObjectName))
+
 	w.WriteHeader(http.StatusOK)
 
 	// Stream the body
@@ -172,6 +181,13 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 	disposition := "attachment"       // default behavior
 	if mode == "inline" {
 		disposition = "inline"
+	} else if mode != "download" && mode != "" {
+		w.WriteHeader(http.StatusInternalServerError)
+		JSON(w, map[string]any{
+			"response": "invalid_download_mode",
+			"code":     http.StatusInternalServerError,
+		})
+		return
 	}
 
 	// 1. parse sharing token from url path
