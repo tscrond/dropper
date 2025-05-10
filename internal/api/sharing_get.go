@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"maps"
@@ -54,6 +55,12 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 			"response": "empty_token",
 			"code":     http.StatusInternalServerError,
 		})
+	}
+
+	mode := r.URL.Query().Get("mode") // "inline" or "download"
+	disposition := "attachment"       // default behavior
+	if mode == "inline" {
+		disposition = "inline"
 	}
 
 	// 2. check if token exists, if exists, return file ID
@@ -124,6 +131,7 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 
 	// Copy headers
 	maps.Copy(w.Header(), resp.Header)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("%s; filename=%q", disposition, bucketAndObjectRow.ObjectName))
 	w.WriteHeader(http.StatusOK)
 
 	// Stream the body
@@ -160,9 +168,14 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	mode := r.URL.Query().Get("mode") // "inline" or "download"
+	disposition := "attachment"       // default behavior
+	if mode == "inline" {
+		disposition = "inline"
+	}
+
 	// 1. parse sharing token from url path
 	sharingToken := chi.URLParam(r, "token")
-	log.Println(sharingToken)
 
 	// 1.5 check token expiration times
 	expiresAt, err := s.repository.Queries.GetTokenExpirationTime(ctx, sharingToken)
@@ -245,6 +258,9 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 
 	// Copy headers
 	maps.Copy(w.Header(), resp.Header)
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf("%s; filename=%q", disposition, bucketAndObject.FileName))
+
 	w.WriteHeader(http.StatusOK)
 
 	// Stream the body
