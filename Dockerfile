@@ -1,4 +1,4 @@
-FROM golang:1.24.1-alpine AS builder
+FROM golang:1.24.3-alpine3.21 AS builder
 
 WORKDIR /dropper
 
@@ -10,7 +10,7 @@ RUN go build -o /dropper/dropper /dropper/cmd
 
 EXPOSE 3000
 
-FROM golang:1.24.1-alpine
+FROM golang:1.24.3-alpine3.21
 
 WORKDIR /dropper
 
