@@ -26,3 +26,6 @@ SELECT id FROM files WHERE private_download_token = $1;
 
 -- name: DeleteFileByNameAndId :exec
 DELETE FROM files WHERE owner_google_id = $1 AND file_name = $2;
+
+-- name: GetFileFromChecksum :one
+SELECT id FROM files WHERE md5_checksum = $1;

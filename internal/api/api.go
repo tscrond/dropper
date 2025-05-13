@@ -8,25 +8,24 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
 	"github.com/tscrond/dropper/internal/cloud_storage/types"
+	"github.com/tscrond/dropper/internal/config"
 	"github.com/tscrond/dropper/internal/repo"
 	"golang.org/x/oauth2"
 )
 
 type APIServer struct {
-	listenPort       string
-	bucketHandler    types.ObjectStorage
-	repository       *repo.Repository
-	OAuthConfig      *oauth2.Config
-	frontendEndpoint string
+	backendConfig config.BackendConfig
+	bucketHandler types.ObjectStorage
+	repository    *repo.Repository
+	OAuthConfig   *oauth2.Config
 }
 
-func NewAPIServer(lp string, fe string, bh types.ObjectStorage, repository *repo.Repository, oauth2conf *oauth2.Config) *APIServer {
+func NewAPIServer(backendConfig config.BackendConfig, bh types.ObjectStorage, repository *repo.Repository, oauth2conf *oauth2.Config) *APIServer {
 	return &APIServer{
-		listenPort:       lp,
-		frontendEndpoint: fe,
-		bucketHandler:    bh,
-		repository:       repository,
-		OAuthConfig:      oauth2conf,
+		backendConfig: backendConfig,
+		bucketHandler: bh,
+		repository:    repository,
+		OAuthConfig:   oauth2conf,
 	}
 }
 
@@ -36,7 +35,7 @@ func (s *APIServer) Start() {
 	r.Use(middleware.Logger)
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{s.frontendEndpoint},
+		AllowedOrigins:   []string{s.backendConfig.FrontendEndpoint},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
@@ -57,16 +56,16 @@ func (s *APIServer) Start() {
 	r.Handle("/files/received", s.authMiddleware(http.HandlerFunc(s.getDataSharedForUser)))
 	r.Handle("/files/shared_by_user", s.authMiddleware(http.HandlerFunc(s.getDataSharedByUser)))
 	r.Handle("/files/delete", s.authMiddleware(http.HandlerFunc(s.deleteFile)))
+	r.Handle("/files/{checksum}/note", s.authMiddleware(http.HandlerFunc(s.fileNotesHandler)))
 
 	r.Handle("/d/private/{token}", s.authMiddleware(http.HandlerFunc(s.downloadThroughProxyPersonal)))
 	r.Handle("/d/{token}", http.HandlerFunc(s.downloadThroughProxy))
 
-	// r.Handle("/user/bucket/sync", s.authMiddleware(http.HandlerFunc(s.syncBucket)))
 	r.Handle("/user/data", s.authMiddleware(http.HandlerFunc(s.getUserData)))
 	r.Handle("/user/bucket", s.authMiddleware(http.HandlerFunc(s.getUserBucketData)))
 	r.Handle("/user/private/download_token", s.authMiddleware(http.HandlerFunc(s.getUserPrivateFileByName)))
 	r.Handle("/user/account/delete", s.authMiddleware(http.HandlerFunc(s.deleteAccount)))
 
-	log.Printf("Listening on %s\n", s.listenPort)
-	http.ListenAndServe("0.0.0.0"+s.listenPort, r)
+	log.Printf("Listening on %s\n", s.backendConfig.ListenPort)
+	http.ListenAndServe("0.0.0.0"+s.backendConfig.ListenPort, r)
 }
