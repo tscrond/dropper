@@ -19,6 +19,13 @@ type File struct {
 	PrivateDownloadToken sql.NullString `json:"private_download_token"`
 }
 
+type Note struct {
+	ID      int32          `json:"id"`
+	UserID  sql.NullString `json:"user_id"`
+	FileID  sql.NullInt32  `json:"file_id"`
+	Content string         `json:"content"`
+}
+
 type Share struct {
 	ID           int32          `json:"id"`
 	SharedBy     sql.NullString `json:"shared_by"`

@@ -66,6 +66,17 @@ func (q *Queries) GetFileByOwnerAndName(ctx context.Context, arg GetFileByOwnerA
 	return i, err
 }
 
+const getFileFromChecksum = `-- name: GetFileFromChecksum :one
+SELECT id FROM files WHERE md5_checksum = $1
+`
+
+func (q *Queries) GetFileFromChecksum(ctx context.Context, md5Checksum string) (int32, error) {
+	row := q.db.QueryRowContext(ctx, getFileFromChecksum, md5Checksum)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getFileIdFromToken = `-- name: GetFileIdFromToken :one
 SELECT id FROM files WHERE private_download_token = $1
 `

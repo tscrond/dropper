@@ -146,7 +146,7 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 	// Stream the body
 	_, err = io.Copy(w, resp.Body)
 	if err != nil {
-		log.Println("streaming error:", err)
+		// log.Println("streaming error:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		JSON(w, map[string]any{
 			"response": "streaming_error",

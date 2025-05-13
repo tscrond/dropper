@@ -102,7 +102,7 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 		UserEmail:  jsonResp.Email,
 		UserBucket: userBucket,
 	}); err != nil {
-		http.Redirect(w, r, s.frontendEndpoint, http.StatusInternalServerError)
+		http.Redirect(w, r, s.backendConfig.FrontendEndpoint, http.StatusInternalServerError)
 	}
 
 	log.Printf("USER ID: %s", jsonResp.Id)
@@ -112,7 +112,7 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 		log.Println("database sync with remote buckets succeeded!")
 	}
 
-	http.Redirect(w, r, s.frontendEndpoint, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, s.backendConfig.FrontendEndpoint, http.StatusTemporaryRedirect)
 }
 
 func (s *APIServer) syncDatabaseWithBucket(ctx context.Context, googleUserID string) error {

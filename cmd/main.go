@@ -8,10 +8,12 @@ import (
 
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
+	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/tscrond/dropper/internal/api"
 	"github.com/tscrond/dropper/internal/cloud_storage/factory"
 	"github.com/tscrond/dropper/internal/cloud_storage/types"
+	"github.com/tscrond/dropper/internal/config"
 	"github.com/tscrond/dropper/internal/repo"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -49,7 +51,16 @@ func main() {
 	}
 	defer bucketHandler.Close()
 
-	s := api.NewAPIServer(":3000", frontendEndpoint, bucketHandler, repository, &oauth2.Config{
+	htmlSanitizationPolicy := bluemonday.UGCPolicy()
+
+	backendConfig := config.BackendConfig{
+		ListenPort:             ":3000",
+		BackendEndpoint:        backendEndpoint,
+		FrontendEndpoint:       frontendEndpoint,
+		HTMLSanitizationPolicy: htmlSanitizationPolicy,
+	}
+
+	s := api.NewAPIServer(backendConfig, bucketHandler, repository, &oauth2.Config{
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		RedirectURL:  fmt.Sprintf("%s/auth/callback", backendEndpoint),
