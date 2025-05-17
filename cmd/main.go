@@ -20,6 +20,10 @@ import (
 )
 
 func main() {
+	listenPort := os.Getenv("DROPPER_LISTEN_PORT")
+	if listenPort == "" {
+		listenPort = "3000"
+	}
 	clientId := os.Getenv("GOOGLE_CLIENT_ID")
 	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
 	frontendEndpoint := os.Getenv("FRONTEND_ENDPOINT")
@@ -54,7 +58,7 @@ func main() {
 	htmlSanitizationPolicy := bluemonday.UGCPolicy()
 
 	backendConfig := config.BackendConfig{
-		ListenPort:             ":3000",
+		ListenPort:             fmt.Sprintf(":%s", listenPort),
 		BackendEndpoint:        backendEndpoint,
 		FrontendEndpoint:       frontendEndpoint,
 		HTMLSanitizationPolicy: htmlSanitizationPolicy,
