@@ -27,7 +27,10 @@ func NewEmailService(provider string, repository *repo.Repository) (types.EmailS
 		}
 
 		return mailservice.NewSESEmailService(cfg, repository)
-
+	case "standard":
+		// config here
+		cfg := types.StandardSenderConfig{}
+		return mailservice.NewStandardMailService(cfg, repository)
 	case "other":
 		return nil, errors.New("not implemented")
 

@@ -10,3 +10,6 @@ type MessageConfig struct {
 	Subject string
 	Body    string
 }
+
+type StandardSenderConfig struct {
+}

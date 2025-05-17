@@ -16,7 +16,7 @@ import (
 
 type APIServer struct {
 	backendConfig config.BackendConfig
-	bucketHandler types.ObjectStorage
+	bucketHandler storagetypes.ObjectStorage
 	emailSender   mailtypes.EmailSender
 	repository    *repo.Repository
 	OAuthConfig   *oauth2.Config
