@@ -7,23 +7,26 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
-	"github.com/tscrond/dropper/internal/cloud_storage/types"
+	storagetypes "github.com/tscrond/dropper/internal/cloud_storage/types"
 	"github.com/tscrond/dropper/internal/config"
+	mailtypes "github.com/tscrond/dropper/internal/mailservice/types"
 	"github.com/tscrond/dropper/internal/repo"
 	"golang.org/x/oauth2"
 )
 
 type APIServer struct {
 	backendConfig config.BackendConfig
-	bucketHandler types.ObjectStorage
+	bucketHandler storagetypes.ObjectStorage
+	emailSender   mailtypes.EmailSender
 	repository    *repo.Repository
 	OAuthConfig   *oauth2.Config
 }
 
-func NewAPIServer(backendConfig config.BackendConfig, bh types.ObjectStorage, repository *repo.Repository, oauth2conf *oauth2.Config) *APIServer {
+func NewAPIServer(backendConfig config.BackendConfig, es mailtypes.EmailSender, bh storagetypes.ObjectStorage, repository *repo.Repository, oauth2conf *oauth2.Config) *APIServer {
 	return &APIServer{
 		backendConfig: backendConfig,
 		bucketHandler: bh,
+		emailSender:   es,
 		repository:    repository,
 		OAuthConfig:   oauth2conf,
 	}

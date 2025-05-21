@@ -11,9 +11,11 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/tscrond/dropper/internal/api"
-	"github.com/tscrond/dropper/internal/cloud_storage/factory"
-	"github.com/tscrond/dropper/internal/cloud_storage/types"
+	storagefactory "github.com/tscrond/dropper/internal/cloud_storage/factory"
+	storagetypes "github.com/tscrond/dropper/internal/cloud_storage/types"
 	"github.com/tscrond/dropper/internal/config"
+	mailfactory "github.com/tscrond/dropper/internal/mailservice/factory"
+	mailtypes "github.com/tscrond/dropper/internal/mailservice/types"
 	"github.com/tscrond/dropper/internal/repo"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -64,7 +66,13 @@ func main() {
 		HTMLSanitizationPolicy: htmlSanitizationPolicy,
 	}
 
-	s := api.NewAPIServer(backendConfig, bucketHandler, repository, &oauth2.Config{
+	provider := "standard"
+	emailSender, err := InitMailSender(provider, repository)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	s := api.NewAPIServer(backendConfig, emailSender, bucketHandler, repository, &oauth2.Config{
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		RedirectURL:  fmt.Sprintf("%s/auth/callback", backendEndpoint),
@@ -75,11 +83,15 @@ func main() {
 	s.Start()
 }
 
-func InitObjectStorage(backendEndpoint, storageProvider string, repository *repo.Repository) (types.ObjectStorage, error) {
+func InitMailSender(provider string, repository *repo.Repository) (mailtypes.EmailSender, error) {
+	return mailfactory.NewEmailService(provider, repository)
+}
+
+func InitObjectStorage(backendEndpoint, storageProvider string, repository *repo.Repository) (storagetypes.ObjectStorage, error) {
 
 	log.Printf("%s", fmt.Sprintf("%s/auth/callback", backendEndpoint))
 
-	return factory.NewStorageProvider(storageProvider, repository)
+	return storagefactory.NewStorageProvider(storageProvider, repository)
 }
 
 func InitRepository(connString string) (*repo.Repository, error) {
