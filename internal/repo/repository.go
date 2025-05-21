@@ -26,8 +26,6 @@ func NewRepository(db *sql.DB) (*Repository, error) {
 	if err != nil {
 		log.Println("driver error", err)
 	}
-	cwd, _ := os.Getwd()
-	log.Println("Current working dir:", cwd)
 
 	entries, err := os.ReadDir("./internal/repo/migrations")
 	if err != nil {

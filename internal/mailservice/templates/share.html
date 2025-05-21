@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>File(s) Shared By {{.SenderEmail}}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Atma:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body, table, td, p {
+      font-family: 'Atma', Arial, sans-serif;
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f6fa;">
+  <table align="center" width="600" cellpadding="0" cellspacing="0" style="border: 5px dotted black; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+  <tr style="background-color: #d9d9d9;">
+    <td style="padding: 20px; text-align: center;">
+      <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="text-align: center;">
+            <h1 style="margin: 0;">Dropper App</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align: center; padding-top: 10px;">
+            <img src="https://cdn-icons-png.flaticon.com/512/103/103042.png" alt="Description" width="100" style="border-radius: 8px;" />
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+          <tr>
+            <td style="padding: 30px;">
+              <h2 style="margin: 0;">New File(s) Shared By {{.SenderEmail}}!</h2>
+
+              <p style="font-size: 16px; color: #333;">Hi!</p>
+              <p style="font-size: 16px; color: #333;">
+                <strong>{{.SenderEmail}}</strong> has just shared files with you via Dropper.
+              </p>
+              <table width="100%" cellpadding="10" cellspacing="0" style="background-color: #f1f1f1; border-radius: 6px; margin: 20px 0;">
+                {{range .Files}}
+                <tr>
+                  <td style="font-size: 14px; color: #555;">📄 {{.FileName}}</td>
+                  <td align="right">
+                    <a href="{{.DownloadURL}}" style="background-color: #4a90e2; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; font-size: 14px;">
+                      Download
+                    </a>
+                  </td>
+                </tr>
+                {{end}}
+              </table>
+              <p style="font-size: 14px; color: #555;">
+                These files will be available until <strong>{{.ExpiryDate}}</strong>.
+              </p>
+              <p style="font-size: 14px; color: #555;">Thanks,<br>The Dropper Team</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 15px; background-color: #f5f6fa; font-size: 12px; color: #888; text-align: center;">
+              This is an automated message. Please do not reply to this email.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -68,7 +68,6 @@ func (s *APIServer) Start() {
 	r.Handle("/user/bucket", s.authMiddleware(http.HandlerFunc(s.getUserBucketData)))
 	r.Handle("/user/private/download_token", s.authMiddleware(http.HandlerFunc(s.getUserPrivateFileByName)))
 	r.Handle("/user/account/delete", s.authMiddleware(http.HandlerFunc(s.deleteAccount)))
-	r.Handle("/test/email", http.HandlerFunc(s.sendEmail))
 
 	log.Printf("Listening on %s\n", s.backendConfig.ListenPort)
 	http.ListenAndServe("0.0.0.0"+s.backendConfig.ListenPort, r)

@@ -29,7 +29,18 @@ func NewEmailService(provider string, repository *repo.Repository) (types.EmailS
 		return mailservice.NewSESEmailService(cfg, repository)
 	case "standard":
 		// config here
-		cfg := types.StandardSenderConfig{}
+		smtpHost := os.Getenv("SMTP_HOST")
+		smtpPort := os.Getenv("SMTP_PORT")
+		smtpUsername := os.Getenv("SMTP_USERNAME")
+		smtpPassword := os.Getenv("SMTP_PASSWORD")
+
+		cfg := &types.StandardSenderConfig{
+			SmtpHost:     smtpHost,
+			SmtpPort:     smtpPort,
+			SmtpUsername: smtpUsername,
+			SmtpPassword: smtpPassword,
+		}
+
 		return mailservice.NewStandardMailService(cfg, repository)
 	case "other":
 		return nil, errors.New("not implemented")

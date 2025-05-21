@@ -62,7 +62,7 @@ func main() {
 		HTMLSanitizationPolicy: htmlSanitizationPolicy,
 	}
 
-	provider := "ses"
+	provider := "standard"
 	emailSender, err := InitMailSender(provider, repository)
 	if err != nil {
 		log.Fatalln(err)
