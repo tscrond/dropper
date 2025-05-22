@@ -27,4 +27,5 @@ go.work.sum
 bin
 tmp
 
+.DS_Store
 config/bucket-auth.json
