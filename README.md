@@ -1,4 +1,3 @@
-
 # Dropper Backend
 
 This is the backend application for the Dropper frontend.
@@ -30,41 +29,73 @@ cd dropper
 Create a `.env` file in the root directory and add the following variables:
 
 .env:
+
 ```env
 #!/bin/bash
 
+DROPPER_LISTEN_PORT=3000
 GCS_BUCKET_NAME="dropper-app"
 GOOGLE_APPLICATION_CREDENTIALS=<redacted>
 
-GOOGLE_PROJECT_ID="<redacted>"
-GOOGLE_COOKIE_SECRET="<redacted>"
-GOOGLE_CLIENT_ID="<redacted>"
-GOOGLE_CLIENT_SECRET="<redacted>"
+GOOGLE_PROJECT_ID=<redacted>
+GOOGLE_COOKIE_SECRET=<redacted>
+GOOGLE_CLIENT_ID=<redacted>
+GOOGLE_CLIENT_SECRET=<redacted>
 
-DB_CONNECTION_STRING="postgres://<devuser>:<devpass>@localhost:5432/<devdb>?sslmode=disable"
+# for SES email provider
+AWS_ACCESS_KEY_ID=<redacted>
+AWS_SECRET_ACCESS_KEY=<redacted>
+AWS_REGION=<redacted>
 
-# for local deployment:
+# for "standard" email provider
+SMTP_HOST=<redacted>
+SMTP_PORT="587"
+SMTP_USERNAME=<redacted>
+SMTP_PASSWORD=<redacted>
+
+POSTGRES_USER="devuser"
+POSTGRES_PASSWORD="devpass" 
+POSTGRES_DB="devdb"
+DB_HOST="localhost"
+
 FRONTEND_ENDPOINT="http://localhost:5173"
 BACKEND_ENDPOINT="http://localhost:3000"
 ```
 
 .envs:
+
 ```env
 #!/bin/bash
 
+CURRENT_IP="localhost"
+
+export DROPPER_LISTEN_PORT=3000
 export GCS_BUCKET_NAME="dropper-app"
 export GOOGLE_APPLICATION_CREDENTIALS=<redacted>
 
-export GOOGLE_PROJECT_ID="<redacted>"
-export GOOGLE_COOKIE_SECRET="<redacted>"
-export GOOGLE_CLIENT_ID="<redacted>"
-export GOOGLE_CLIENT_SECRET="<redacted>"
+export GOOGLE_PROJECT_ID=<redacted>
+export GOOGLE_COOKIE_SECRET=<redacted>
+export GOOGLE_CLIENT_ID=<redacted>
+export GOOGLE_CLIENT_SECRET=<redacted>
 
-export DB_CONNECTION_STRING="postgres://<devuser>:<devpass>@localhost:5432/<devdb>?sslmode=disable"
+# for SES email provider
+export AWS_ACCESS_KEY_ID=<redacted>
+export AWS_SECRET_ACCESS_KEY=<redacted>
+export AWS_REGION=<redacted>
 
-# for local deployment:
-export FRONTEND_ENDPOINT="http://localhost:5173"
-export BACKEND_ENDPOINT="http://localhost:3000"
+# for "standard" email provider
+export SMTP_HOST=<redacted>
+export SMTP_PORT="587"
+export SMTP_USERNAME=<redacted>
+export SMTP_PASSWORD=<redacted>
+
+export POSTGRES_USER="devuser"
+export POSTGRES_PASSWORD="devpass" 
+export POSTGRES_DB="devdb"
+export DB_HOST="localhost"
+
+export FRONTEND_ENDPOINT="http://${CURRENT_IP}:5173"
+export BACKEND_ENDPOINT="http://${CURRENT_IP}:3000"
 ```
 
 ### Build and Run with Docker
