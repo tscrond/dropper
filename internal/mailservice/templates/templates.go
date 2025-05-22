@@ -5,15 +5,19 @@ import (
 	"errors"
 	"html/template"
 	"log"
-	"path/filepath"
+
+	_ "embed"
 
 	types "github.com/tscrond/dropper/internal/mailservice/types"
 )
 
+//go:embed share.html
+var sharingTemplate string
+
 func RenderMailTemplate(templateType string, emailData types.MailData) (string, error) {
 	switch templateType {
 	case "sharing":
-		tmpl, err := template.ParseFiles(filepath.Clean("./internal/mailservice/templates/share.html"))
+		tmpl, err := template.New("share").Parse(sharingTemplate)
 		if err != nil {
 			log.Println(err)
 			return "", err
