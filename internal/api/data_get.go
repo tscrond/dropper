@@ -4,57 +4,44 @@ import (
 	"net/http"
 
 	"github.com/tscrond/dropper/internal/userdata"
+	"github.com/tscrond/dropper/pkg"
 )
 
 func (s *APIServer) getUserData(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]any{
-			"response": "bad_request",
-			"code":     http.StatusBadRequest,
-		})
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "", "bad_request")
 		return
 	}
 
 	userData, ok := r.Context().Value(userdata.AuthorizedUserContextKey).(*userdata.AuthorizedUserInfo)
 	// fmt.Println(userData)
 	if !ok {
-		JSON(w, map[string]interface{}{
-			"response":  "access_denied",
-			"code":      http.StatusForbidden,
+		pkg.WriteJSONResponse(w, http.StatusForbidden, "Access Denied", map[string]any{
 			"user_data": nil,
 		})
 		return
 	}
 
-	response := map[string]interface{}{
-		"response":  "ok",
-		"code":      http.StatusOK,
+	response := map[string]any{
 		"user_data": userData,
 	}
 
-	JSON(w, response)
+	pkg.WriteJSONResponse(w, http.StatusOK, "", response)
 }
 
 func (s *APIServer) getUserBucketData(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]any{
-			"response": "bad_request",
-			"code":     http.StatusBadRequest,
-		})
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "", "bad_request")
 		return
 	}
 
 	userData, ok := r.Context().Value(userdata.AuthorizedUserContextKey).(*userdata.AuthorizedUserInfo)
 	// fmt.Println(userData)
 	if !ok {
-		JSON(w, map[string]any{
-			"response":  "access_denied",
-			"code":      http.StatusForbidden,
+		pkg.WriteJSONResponse(w, http.StatusForbidden, "access_denied", map[string]any{
 			"user_data": nil,
 		})
 		return
@@ -62,30 +49,20 @@ func (s *APIServer) getUserBucketData(w http.ResponseWriter, r *http.Request) {
 
 	bucketData, err := s.bucketHandler.GetUserBucketData(ctx, userData.Id)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response":    "internal_error",
-			"code":        http.StatusInternalServerError,
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "internal_error", map[string]any{
 			"bucket_data": nil,
 		})
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	JSON(w, map[string]any{
-		"response":    "ok",
-		"code":        http.StatusOK,
+	pkg.WriteJSONResponse(w, http.StatusOK, "internal_error", map[string]any{
 		"bucket_data": bucketData,
 	})
 }
 
 func (s *APIServer) getUserPrivateFileByName(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]any{
-			"response": "bad_request",
-			"code":     http.StatusBadRequest,
-		})
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "bad_request", "")
 		return
 	}
 
@@ -95,17 +72,11 @@ func (s *APIServer) getUserPrivateFileByName(w http.ResponseWriter, r *http.Requ
 
 	downloadToken, err := s.repository.Queries.GetPrivateDownloadTokenByFileName(ctx, fileName)
 	if err != nil {
-		JSON(w, map[string]any{
-			"response": "internal_error",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "internal_error", "")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	JSON(w, map[string]any{
-		"response":               "ok",
-		"code":                   http.StatusOK,
+	pkg.WriteJSONResponse(w, http.StatusOK, "", map[string]any{
 		"private_download_token": downloadToken.String,
 	})
 }

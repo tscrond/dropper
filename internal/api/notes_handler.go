@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/tscrond/dropper/internal/repo/sqlc"
 	"github.com/tscrond/dropper/internal/userdata"
+	pkg "github.com/tscrond/dropper/pkg"
 )
 
 type NoteContent struct {
@@ -30,11 +31,7 @@ func (s *APIServer) editFileNotes(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	if r.Method != http.MethodPut {
-		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]any{
-			"response": "bad_request",
-			"code":     http.StatusBadRequest,
-		})
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "bad_request", "")
 		return
 	}
 
@@ -43,11 +40,7 @@ func (s *APIServer) editFileNotes(w http.ResponseWriter, r *http.Request) {
 	authUserData, ok := authorizedUserData.(*userdata.AuthorizedUserInfo)
 	if !ok {
 		log.Println("cannot read authorized user data")
-		w.WriteHeader(http.StatusForbidden)
-		JSON(w, map[string]any{
-			"response": "authorization_failed",
-			"code":     http.StatusForbidden,
-		})
+		pkg.WriteJSONResponse(w, http.StatusForbidden, "authorization_failed", "")
 		return
 	}
 
@@ -55,11 +48,7 @@ func (s *APIServer) editFileNotes(w http.ResponseWriter, r *http.Request) {
 
 	var req NoteContent
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "no content",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "no_content", "")
 		return
 	}
 
@@ -67,22 +56,14 @@ func (s *APIServer) editFileNotes(w http.ResponseWriter, r *http.Request) {
 
 	id, err := s.repository.Queries.GetFileFromChecksum(ctx, md5Checksum)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "cannot get file",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "cannot_get_file", "")
 		return
 	}
 
 	log.Println("Sanitized note content: ", sanitizedNoteContent)
 
 	if utf8.RuneCountInString(sanitizedNoteContent) > 500 {
-		w.WriteHeader(http.StatusForbidden)
-		JSON(w, map[string]any{
-			"response": "too_many_characters",
-			"code":     http.StatusForbidden,
-		})
+		pkg.WriteJSONResponse(w, http.StatusForbidden, "too_many_characters", "")
 		return
 	}
 
@@ -94,30 +75,19 @@ func (s *APIServer) editFileNotes(w http.ResponseWriter, r *http.Request) {
 			Content: sanitizedNoteContent,
 		},
 	); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "cannot_update",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "cannot_update_resource", "")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	JSON(w, map[string]any{
-		"response": "created_note",
-		"code":     http.StatusOK,
-		"note":     sanitizedNoteContent,
+	pkg.WriteJSONResponse(w, http.StatusOK, "created_note", map[string]any{
+		"note": sanitizedNoteContent,
 	})
 }
 
 func (s *APIServer) getFileNotes(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]any{
-			"response": "bad_request",
-			"code":     http.StatusBadRequest,
-		})
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "bad_request", "")
 		return
 	}
 
@@ -127,30 +97,19 @@ func (s *APIServer) getFileNotes(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		log.Println("cannot read authorized user data")
 		w.WriteHeader(http.StatusForbidden)
-		JSON(w, map[string]any{
-			"response": "authorization_failed",
-			"code":     http.StatusForbidden,
-		})
+		pkg.WriteJSONResponse(w, http.StatusForbidden, "authorization_failed", "")
 		return
 	}
 
 	md5Checksum := chi.URLParam(r, "checksum")
 	if md5Checksum == "" {
-		w.WriteHeader(http.StatusForbidden)
-		JSON(w, map[string]any{
-			"response": "checksum_empty",
-			"code":     http.StatusForbidden,
-		})
+		pkg.WriteJSONResponse(w, http.StatusForbidden, "checksum_empty", "")
 		return
 	}
 
 	fileId, err := s.repository.Queries.GetFileFromChecksum(ctx, md5Checksum)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "error querying file id",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "error_query_file_id", "")
 		return
 	}
 
@@ -159,17 +118,10 @@ func (s *APIServer) getFileNotes(w http.ResponseWriter, r *http.Request) {
 		FileID: sql.NullInt32{Valid: true, Int32: fileId},
 	})
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "error getting note",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "error_get_note", "")
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
-	JSON(w, map[string]any{
-		"code":    http.StatusOK,
+	pkg.WriteJSONResponse(w, http.StatusOK, "", map[string]any{
 		"content": note.Content,
 	})
 }
