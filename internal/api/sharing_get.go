@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/tscrond/dropper/internal/repo/sqlc"
 	"github.com/tscrond/dropper/internal/userdata"
+	pkg "github.com/tscrond/dropper/pkg"
 )
 
 func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.Request) {
@@ -26,11 +27,7 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 	ctx := r.Context()
 
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]any{
-			"response": "bad_request",
-			"code":     http.StatusBadRequest,
-		})
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "bad_request", "")
 		return
 	}
 
@@ -39,22 +36,15 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 	authUserData, ok := authorizedUserData.(*userdata.AuthorizedUserInfo)
 	if !ok {
 		log.Println("cannot read authorized user data")
-		w.WriteHeader(http.StatusForbidden)
-		JSON(w, map[string]any{
-			"response": "authorization_failed",
-			"code":     http.StatusForbidden,
-		})
+		pkg.WriteJSONResponse(w, http.StatusForbidden, "authorization_failed", "")
 		return
 	}
 
 	token := chi.URLParam(r, "token")
 
 	if token == "" {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "empty_token",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "empty_token", "")
+		return
 	}
 
 	mode := r.URL.Query().Get("mode") // "inline" or "download"
@@ -62,11 +52,7 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 	if mode == "inline" {
 		disposition = "inline"
 	} else if mode != "download" && mode != "" {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "invalid_download_mode",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "invalid_download_mode", "")
 		return
 	}
 
@@ -74,38 +60,22 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 	_, err := s.repository.Queries.GetFileIdFromToken(ctx, sql.NullString{Valid: true, String: token})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNotFound)
-			JSON(w, map[string]any{
-				"response": "file_does_not_exist",
-				"code":     http.StatusNotFound,
-			})
+			pkg.WriteJSONResponse(w, http.StatusNotFound, "file_does_not_exist", "")
 			return
 		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-			JSON(w, map[string]any{
-				"response": "token_check_error",
-				"code":     http.StatusInternalServerError,
-			})
+			pkg.WriteJSONResponse(w, http.StatusInternalServerError, "token_check_error", "")
 			return
 		}
 	}
 
 	bucketAndObjectRow, err := s.repository.Queries.GetBucketObjectAndOwnerFromPrivateToken(ctx, sql.NullString{Valid: true, String: token})
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "cannot_get_bucket_data",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "cannot_get_bucket_data", "")
 		return
 	}
 
 	if authUserData.Id != bucketAndObjectRow.OwnerGoogleID.String {
-		w.WriteHeader(http.StatusForbidden)
-		JSON(w, map[string]any{
-			"response": "access_denied",
-			"code":     http.StatusForbidden,
-		})
+		pkg.WriteJSONResponse(w, http.StatusForbidden, "access_denied", "")
 		return
 	}
 
@@ -114,11 +84,7 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 
 	signedUrl, err := s.bucketHandler.GenerateSignedURL(ctx, bucket, object, time.Now().Add(1*time.Minute))
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "cannot_generate_url",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "cannot_generate_url", "")
 		return
 	}
 
@@ -127,11 +93,7 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 	// 4. stream the file contents to the writer
 	resp, err := http.Get(signedUrl)
 	if err != nil || resp.StatusCode != http.StatusOK {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "signed_url_fetch_failed",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "signed_url_fetch_failed", "")
 		return
 	}
 	defer resp.Body.Close()
@@ -144,17 +106,14 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusOK)
 
 	// Stream the body
-	_, err = io.Copy(w, resp.Body)
+	bytes_written, err := io.Copy(w, resp.Body)
 	if err != nil {
 		// log.Println("streaming error:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "streaming_error",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "streaming_error", "")
 		return
 	}
 
+	log.Printf("written %d bytes", bytes_written)
 }
 
 func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request) {
@@ -169,11 +128,7 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context()
 
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]any{
-			"response": "bad_request",
-			"code":     http.StatusBadRequest,
-		})
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "bad_request", "")
 		return
 	}
 
@@ -182,11 +137,7 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 	if mode == "inline" {
 		disposition = "inline"
 	} else if mode != "download" && mode != "" {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "invalid_download_mode",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "invalid_download_mode", "")
 		return
 	}
 
@@ -196,20 +147,12 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 	// 1.5 check token expiration times
 	expiresAt, err := s.repository.Queries.GetTokenExpirationTime(ctx, sharingToken)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "error_checking_expiration",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "error_checking_expiration", "")
 		return
 	}
 
 	if expiresAt.Before(time.Now()) {
-		w.WriteHeader(http.StatusForbidden)
-		JSON(w, map[string]any{
-			"response": "past_expiration_time_or_does_not_exist",
-			"code":     http.StatusForbidden,
-		})
+		pkg.WriteJSONResponse(w, http.StatusForbidden, "past_expiration_time_or_does_not_exist", "")
 		return
 	}
 
@@ -217,18 +160,10 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 	_, err = s.repository.Queries.GetSharedFileIdFromToken(ctx, sharingToken)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNotFound)
-			JSON(w, map[string]any{
-				"response": "token_does_not_exist",
-				"code":     http.StatusNotFound,
-			})
+			pkg.WriteJSONResponse(w, http.StatusNotFound, "token_does_not_exist", "")
 			return
 		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-			JSON(w, map[string]any{
-				"response": "token_check_error",
-				"code":     http.StatusInternalServerError,
-			})
+			pkg.WriteJSONResponse(w, http.StatusInternalServerError, "token_check_error", "")
 			return
 		}
 	}
@@ -236,11 +171,7 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 	// 2.5 get the bucket of shared resource + get the object name
 	bucketAndObject, err := s.repository.Queries.GetBucketAndObjectFromToken(ctx, sharingToken)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "cannot_get_bucket_data",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "cannot_get_bucket_data", "")
 		return
 	}
 
@@ -252,22 +183,14 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 	)
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "signed_url_error",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "signed_url_error", "")
 		return
 	}
 
 	// 4. stream the file contents to the writer
 	resp, err := http.Get(signedUrl)
 	if err != nil || resp.StatusCode != http.StatusOK {
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "signed_url_fetch_failed",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "signed_url_fetch_failed", "")
 		return
 	}
 	defer resp.Body.Close()
@@ -280,27 +203,22 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 
 	// Stream the body
-	_, err = io.Copy(w, resp.Body)
+	bytes_written, err := io.Copy(w, resp.Body)
 	if err != nil {
-		log.Println("streaming error:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "streaming_error",
-			"code":     http.StatusInternalServerError,
-		})
+		// log.Println("streaming error:", err)
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "streaming_error", "")
 		return
 	}
+
+	log.Printf("written %d bytes", bytes_written)
 }
 
 func (s *APIServer) getDataSharedForUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]any{
-			"response": "bad_request",
-			"code":     http.StatusBadRequest,
-		})
+		status := http.StatusBadRequest
+		pkg.WriteJSONResponse(w, status, "bad_request", "")
 		return
 	}
 
@@ -315,20 +233,13 @@ func (s *APIServer) getDataSharedForUser(w http.ResponseWriter, r *http.Request)
 	filesShared, err := s.repository.Queries.GetFilesSharedWithUser(ctx, sharedFor)
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "internal_error",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "internal_error", "")
 	}
 
 	filesSharedPrep := prepSharedFilesFormat(filesShared)
 
-	w.WriteHeader(http.StatusOK)
-	JSON(w, map[string]any{
-		"response": "ok",
-		"code":     http.StatusOK,
-		"files":    filesSharedPrep,
+	pkg.WriteJSONResponse(w, http.StatusOK, "", map[string]any{
+		"files": filesSharedPrep,
 	})
 }
 
@@ -336,11 +247,7 @@ func (s *APIServer) getDataSharedByUser(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context()
 
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]any{
-			"response": "bad_request",
-			"code":     http.StatusBadRequest,
-		})
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "bad_request", "")
 		return
 	}
 
@@ -355,20 +262,13 @@ func (s *APIServer) getDataSharedByUser(w http.ResponseWriter, r *http.Request) 
 	filesShared, err := s.repository.Queries.GetFilesSharedByUser(ctx, sharedFor)
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "internal_error",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "internal_error", "")
 	}
 
 	filesSharedPrep := prepSharedByFilesFormat(filesShared)
 
-	w.WriteHeader(http.StatusOK)
-	JSON(w, map[string]any{
-		"response": "ok",
-		"code":     http.StatusOK,
-		"files":    filesSharedPrep,
+	pkg.WriteJSONResponse(w, http.StatusOK, "", map[string]any{
+		"files": filesSharedPrep,
 	})
 }
 

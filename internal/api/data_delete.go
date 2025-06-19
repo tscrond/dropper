@@ -8,27 +8,20 @@ import (
 
 	"github.com/tscrond/dropper/internal/repo/sqlc"
 	"github.com/tscrond/dropper/internal/userdata"
+	pkg "github.com/tscrond/dropper/pkg"
 )
 
 func (s *APIServer) deleteFile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if r.Method != http.MethodDelete {
-		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]any{
-			"response": "bad_request",
-			"code":     http.StatusBadRequest,
-		})
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "bad_request", nil)
 		return
 	}
 
 	object := r.URL.Query().Get("file")
 	if object == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]any{
-			"response": "bad_request",
-			"code":     http.StatusBadRequest,
-		})
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "bad_request", nil)
 	}
 
 	// parse data of logged in user
@@ -36,11 +29,7 @@ func (s *APIServer) deleteFile(w http.ResponseWriter, r *http.Request) {
 	authUserData, ok := authorizedUserData.(*userdata.AuthorizedUserInfo)
 	if !ok {
 		log.Println("cannot read authorized user data")
-		w.WriteHeader(http.StatusForbidden)
-		JSON(w, map[string]any{
-			"response": "authorization_failed",
-			"code":     http.StatusForbidden,
-		})
+		pkg.WriteJSONResponse(w, http.StatusForbidden, "authorization_failed", nil)
 		return
 	}
 
@@ -56,31 +45,20 @@ func (s *APIServer) deleteFile(w http.ResponseWriter, r *http.Request) {
 		FileName:      object,
 	}); err != nil {
 		log.Println("errors deleting file from DB: ", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "delete_file_error",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "delete_file_error", nil)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	JSON(w, map[string]any{
-		"response":     "success",
-		"code":         http.StatusOK,
+
+	pkg.WriteJSONResponse(w, http.StatusOK, "success", map[string]any{
 		"file_deleted": object,
 	})
-
 }
 
 func (s *APIServer) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if r.Method != http.MethodDelete {
-		w.WriteHeader(http.StatusBadRequest)
-		JSON(w, map[string]any{
-			"response": "bad_request",
-			"code":     http.StatusBadRequest,
-		})
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "bad_request", nil)
 		return
 	}
 
@@ -89,33 +67,23 @@ func (s *APIServer) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	authUserData, ok := authorizedUserData.(*userdata.AuthorizedUserInfo)
 	if !ok {
 		log.Println("cannot read authorized user data")
-		w.WriteHeader(http.StatusForbidden)
-		JSON(w, map[string]any{
-			"response": "authorization_failed",
-			"code":     http.StatusForbidden,
-		})
+		pkg.WriteJSONResponse(w, http.StatusForbidden, "authorization_failed", nil)
 		return
 	}
 
 	deletedAccount, err := s.repository.Queries.DeleteAccount(ctx, authUserData.Id)
 	if err != nil {
 		log.Println("issues deleting object: ", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		JSON(w, map[string]any{
-			"response": "authorization_failed",
-			"code":     http.StatusInternalServerError,
-		})
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "authorization_failed", nil)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
-	JSON(w, map[string]any{
-		"response": "success",
-		"code":     http.StatusOK,
+ 
+	pkg.WriteJSONResponse(w, http.StatusOK, "success", map[string]any{
 		"account_deleted": map[string]any{
 			"id":        deletedAccount.GoogleID,
 			"email":     deletedAccount.UserEmail,
 			"user_name": deletedAccount.UserName.String,
 		},
 	})
+
 }

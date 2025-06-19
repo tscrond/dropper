@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -136,4 +137,31 @@ func trimSpaces(s string) string {
 		end--
 	}
 	return s[start:end]
+}
+
+func JSON(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		JSON(w, map[string]any{
+			"status":   http.StatusInternalServerError,
+			"response": "Error encoding JSON",
+		})
+		return
+	}
+}
+
+func WriteJSONResponse(w http.ResponseWriter, responseStatus int, customMessage string, customResponse any) {
+	w.WriteHeader(responseStatus)
+
+	resp := map[string]any{
+		"status":   responseStatus,
+		"response": customResponse,
+	}
+	if customMessage != "" {
+		resp["msg"] = customMessage
+	}
+
+	JSON(w, resp)
 }
