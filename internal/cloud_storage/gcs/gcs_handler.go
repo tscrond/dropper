@@ -407,3 +407,52 @@ func (b *GCSBucketHandler) DeleteObjectFromBucket(ctx context.Context, object, b
 	log.Printf("object deleted successfully: (%s,%s)", o.BucketName(), o.ObjectName())
 	return nil
 }
+
+func (b *GCSBucketHandler) getAllObjectNames(ctx context.Context, bucket string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	objectNames := []string{}
+
+	it := b.Client.Bucket(bucket).Objects(ctx, nil)
+	for {
+		attrs, err := it.Next()
+
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return objectNames, fmt.Errorf("Bucket(%q).Objects: %w", bucket, err)
+		}
+		objectNames = append(objectNames, attrs.Name)
+	}
+
+	return objectNames, nil
+}
+
+func (b *GCSBucketHandler) DeleteBucket(ctx context.Context, bucket string) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute*1)
+	defer cancel()
+
+	objectsInBucket, err := b.getAllObjectNames(ctx, bucket)
+	if err != nil {
+		log.Println("failed_fetching_bucket_info, err: ", err)
+	}
+
+	gcsBucket := b.Client.Bucket(bucket)
+	for _, o := range objectsInBucket {
+		object := gcsBucket.Object(o)
+		if err := object.Delete(ctx); err != nil {
+			log.Printf("failed deleting object %s, err: %s\n", o, err)
+		}
+		log.Printf("deleted object %s", o)
+	}
+
+	if err := gcsBucket.Delete(ctx); err != nil {
+		log.Println(err)
+		return fmt.Errorf("failed_deleting_bucket")
+	}
+
+	log.Printf("deleted bucket: %s\n", bucket)
+	return nil
+}

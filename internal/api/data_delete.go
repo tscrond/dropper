@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -70,6 +71,38 @@ func (s *APIServer) deleteAccount(w http.ResponseWriter, r *http.Request) {
 		pkg.WriteJSONResponse(w, http.StatusForbidden, "authorization_failed", nil)
 		return
 	}
+	bucketName := pkg.GetUserBucketName(s.bucketHandler.GetBucketBaseName(), authUserData.Id)
+
+	fullResponse := map[string]any{}
+	fullResponse["bucket"] = map[string]any{
+		"name":    bucketName,
+		"deleted": false,
+	}
+
+	type DeleteAccountRequest struct {
+		DeleteUserData bool `json:"delete_user_data"`
+	}
+
+	var req DeleteAccountRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "bad_request", "")
+		return
+	}
+
+	if req.DeleteUserData {
+		if err := s.bucketHandler.DeleteBucket(ctx, bucketName); err != nil {
+			log.Printf("failed to delete bucket %s err: %s\n", bucketName, err)
+			fullResponse["bucket"] = map[string]any{
+				"name":    bucketName,
+				"deleted": false,
+			}
+		}
+
+		fullResponse["bucket"] = map[string]any{
+			"name":    bucketName,
+			"deleted": true,
+		}
+	}
 
 	deletedAccount, err := s.repository.Queries.DeleteAccount(ctx, authUserData.Id)
 	if err != nil {
@@ -77,13 +110,13 @@ func (s *APIServer) deleteAccount(w http.ResponseWriter, r *http.Request) {
 		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "authorization_failed", nil)
 		return
 	}
- 
-	pkg.WriteJSONResponse(w, http.StatusOK, "success", map[string]any{
-		"account_deleted": map[string]any{
-			"id":        deletedAccount.GoogleID,
-			"email":     deletedAccount.UserEmail,
-			"user_name": deletedAccount.UserName.String,
-		},
-	})
+
+	fullResponse["account_deleted"] = map[string]any{
+		"id":        deletedAccount.GoogleID,
+		"email":     deletedAccount.UserEmail,
+		"user_name": deletedAccount.UserName.String,
+	}
+
+	pkg.WriteJSONResponse(w, http.StatusOK, "success", fullResponse)
 
 }
