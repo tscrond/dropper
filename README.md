@@ -5,9 +5,11 @@ It handles file uploads to a Google Cloud Storage (GCS) bucket.
 
 ## Features
 
-- Receives files from the frontend and uploads them to a specified GCS bucket.
-- Built with Go for performance and reliability.
-- Dockerized for easy deployment.
+- Uploading files to the cloud storage (GCS)
+- Displaying metadata about stored and received objects
+- Sharing files in the store via email or private/public links
+- Previewing supported file types (image, video, audio, pdf)
+- Adding notes attached to stored files
 
 ## Prerequisites
 
