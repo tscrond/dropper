@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -29,15 +30,24 @@ func (s *APIServer) oauthHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	oauthErr := r.URL.Query().Get("error")
+	if oauthErr != "" {
+		oauthErrDescription := r.URL.Query().Get("error_description")
+		log.Printf("oauth callback authorization error: %s (%s)", oauthErr, oauthErrDescription)
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "", fmt.Sprintf("OAuth authorization failed: %s", oauthErr))
+		return
+	}
+
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		pkg.WriteJSONResponse(w, http.StatusBadRequest, "", "Missing authorization code")
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "", "Missing authorization code in callback")
 		return
 	}
 
 	t, err := s.OAuthConfig.Exchange(ctx, code)
 	if err != nil {
-		pkg.WriteJSONResponse(w, http.StatusBadRequest, "", "Missing authorization code")
+		log.Printf("oauth token exchange failed: %v", err)
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "", "OAuth token exchange failed")
 		return
 	}
 
@@ -46,10 +56,18 @@ func (s *APIServer) authCallback(w http.ResponseWriter, r *http.Request) {
 	// Getting the user public details from google API endpoint
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
-		pkg.WriteJSONResponse(w, http.StatusBadRequest, "", "Missing authorization code")
+		log.Printf("google userinfo request failed: %v", err)
+		pkg.WriteJSONResponse(w, http.StatusBadGateway, "", "Could not fetch Google user profile")
 		return
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		responseBody, _ := io.ReadAll(resp.Body)
+		log.Printf("google userinfo request returned status=%d body=%s", resp.StatusCode, string(responseBody))
+		pkg.WriteJSONResponse(w, http.StatusBadGateway, "", "Could not fetch Google user profile")
+		return
+	}
 
 	var jsonResp userdata.AuthorizedUserInfo
 

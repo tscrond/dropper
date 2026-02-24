@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: local/dropper-frontend
+    image: dropper-frontend
     container_name: frontend
     ports:
       - 8000:8000/tcp
@@ -21,7 +21,7 @@ services:
   backend:
     depends_on:
       - dev-postgres
-    image: local/dropper-backend
+    image: dropper-backend
     container_name: backend
     restart: always
     ports:
@@ -43,6 +43,6 @@ services:
       - ./config/bucket-auth.json:/config/bucket-auth.json:ro
 
     
-networks:
-  proxy:
-    external: true
+# networks:
+#   proxy:
+#     external: true
