@@ -1,3 +1,6 @@
+ARG TARGETOS
+ARG TARGETARCH
+
 FROM golang:1.24.3-alpine3.21 AS builder
 
 WORKDIR /dropper
@@ -6,7 +9,7 @@ COPY . .
 
 RUN go mod download
 
-RUN go build -o /dropper/dropper /dropper/cmd
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /dropper/dropper /dropper/cmd
 
 EXPOSE 3000
 
