@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: dropper-frontend
+    image: dropper-frontend:local
     container_name: frontend
     ports:
       - 8000:8000/tcp
@@ -21,7 +21,7 @@ services:
   backend:
     depends_on:
       - dev-postgres
-    image: dropper-backend
+    image: dropper-backend:local
     container_name: backend
     restart: always
     ports:
