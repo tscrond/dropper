@@ -9,6 +9,14 @@ on:
       image-name-github:
         required: true
         type: string
+      runner-name:
+        required: false
+        type: string
+        default: ubuntu-latest
+      arch:
+        required: true
+        type: string
+        default: linux/amd64
     secrets:
       docker-hub-username:
         required: true
@@ -19,7 +27,7 @@ on:
 
 jobs:
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner-name }}
     permissions:
       contents: read
       packages: write
@@ -32,9 +40,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -67,7 +72,7 @@ jobs:
         with:
           images: ${{ matrix.registry }}/${{ inputs.image-name-github }}
 
-      - name: Build and push Docker image to Docker Hub
+      - name: Build and push Docker image to Docker Hub (${{ inputs.arch }})
         if: matrix.registry == 'docker.io' && github.event_name != 'pull_request'
         id: build-and-push-dockerhub
         uses: docker/build-push-action@v5
@@ -76,11 +81,11 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-dockerhub.outputs.tags }}
           labels: ${{ steps.meta-dockerhub.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ inputs.arch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and push Docker image to GHCR
+      - name: Build and push Docker image to GHCR (${{ inputs.arch }})
         if: matrix.registry == 'ghcr.io' && github.event_name != 'pull_request'
         id: build-and-push-ghcr
         uses: docker/build-push-action@v5
@@ -89,6 +94,6 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-ghcr.outputs.tags }}
           labels: ${{ steps.meta-ghcr.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ inputs.arch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
