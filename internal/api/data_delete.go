@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/tscrond/dropper/internal/pathutil"
 	"github.com/tscrond/dropper/internal/repo/sqlc"
 	"github.com/tscrond/dropper/internal/userdata"
 	pkg "github.com/tscrond/dropper/pkg"
@@ -23,7 +24,11 @@ func (s *APIServer) deleteFile(w http.ResponseWriter, r *http.Request) {
 	object := r.URL.Query().Get("file")
 	if object == "" {
 		pkg.WriteJSONResponse(w, http.StatusBadRequest, "bad_request", nil)
+		return
 	}
+
+	// Backward compat: bare filename (no slash) → Main/<filename>
+	object = pathutil.WithMainPrefix(object)
 
 	// parse data of logged in user
 	authorizedUserData := ctx.Value(userdata.AuthorizedUserContextKey)

@@ -2,11 +2,14 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/tscrond/dropper/internal/filedata"
+	"github.com/tscrond/dropper/internal/pathutil"
+	"github.com/tscrond/dropper/internal/repo/sqlc"
 	"github.com/tscrond/dropper/internal/userdata"
 	pkg "github.com/tscrond/dropper/pkg"
 )
@@ -28,7 +31,6 @@ func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
 		pkg.WriteJSONResponse(w, http.StatusForbidden, "failed_to_retrieve_user_data", "")
 		return
 	}
-	// fmt.Println("Authorized User:", authorizedUserData)
 
 	// Get file from request
 	file, header, err := r.FormFile("file")
@@ -39,10 +41,17 @@ func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// Create fileData object
-	fileData := filedata.NewFileData(file, header)
-	if fileData == nil {
-		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "invalid_file_data", "")
+	// Resolve canonical path: folder/filename or Main/filename
+	folder := r.FormValue("folder")
+	var canonicalPath string
+	if folder != "" {
+		canonicalPath = folder + "/" + header.Filename
+	} else {
+		canonicalPath = pathutil.WithMainPrefix(header.Filename)
+	}
+
+	if err := pathutil.Validate(canonicalPath); err != nil {
+		pkg.WriteJSONResponse(w, http.StatusBadRequest, "invalid_path", err.Error())
 		return
 	}
 
@@ -50,12 +59,32 @@ func (s *APIServer) uploadHandler(w http.ResponseWriter, r *http.Request) {
 	ctx = context.WithValue(ctx, userdata.VerifiedUserContextKey, verifiedUserData)
 	ctx = context.WithValue(ctx, userdata.AuthorizedUserContextKey, authorizedUserData)
 
+	// Reject duplicate paths
+	_, dupErr := s.repository.Queries.GetFileByOwnerAndName(ctx, sqlc.GetFileByOwnerAndNameParams{
+		OwnerGoogleID: sql.NullString{Valid: true, String: authorizedUserData.Id},
+		FileName:      canonicalPath,
+	})
+	if dupErr == nil {
+		pkg.WriteJSONResponse(w, http.StatusConflict, "file_already_exists", "")
+		return
+	}
+
+	// Override filename with canonical path so storage drivers use it as the object key
+	header.Filename = canonicalPath
+
+	// Create fileData object
+	fileData := filedata.NewFileData(file, header)
+	if fileData == nil {
+		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "invalid_file_data", "")
+		return
+	}
+
 	if err := s.bucketHandler.SendFileToBucket(ctx, fileData); err != nil {
 		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "bucket_upload_failed", "")
 		return
 	}
 
-	msg := fmt.Sprintf("Files uploaded successfully: %+v\n", fileData.RequestHeaders.Filename)
+	msg := fmt.Sprintf("Files uploaded successfully: %+v\n", canonicalPath)
 
 	pkg.WriteJSONResponse(w, http.StatusOK, "", msg)
 }

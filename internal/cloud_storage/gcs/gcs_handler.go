@@ -456,3 +456,20 @@ func (b *GCSBucketHandler) DeleteBucket(ctx context.Context, bucket string) erro
 	log.Printf("deleted bucket: %s\n", bucket)
 	return nil
 }
+
+// RenameObject copies srcObject in srcBucket to dstObject in dstBucket, then deletes the source.
+func (b *GCSBucketHandler) RenameObject(ctx context.Context, srcBucket, srcObject, dstBucket, dstObject string) error {
+	src := b.Client.Bucket(srcBucket).Object(srcObject)
+	dst := b.Client.Bucket(dstBucket).Object(dstObject)
+
+	if _, err := dst.CopierFrom(src).Run(ctx); err != nil {
+		return fmt.Errorf("RenameObject copy %q → %q: %w", srcObject, dstObject, err)
+	}
+
+	if err := src.Delete(ctx); err != nil {
+		return fmt.Errorf("RenameObject delete src %q: %w", srcObject, err)
+	}
+
+	log.Printf("renamed object %s/%s → %s/%s", srcBucket, srcObject, dstBucket, dstObject)
+	return nil
+}

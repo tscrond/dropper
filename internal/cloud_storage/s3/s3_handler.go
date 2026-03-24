@@ -394,6 +394,46 @@ func (b *S3BucketHandler) Close() error {
 	return nil
 }
 
+// RenameObject copies the S3 object from src to dst key, then deletes the source.
+// srcBucket / dstBucket follow the "<base>-<userId>" format used elsewhere; the
+// actual S3 bucket is always b.BaseBucketName.
+func (b *S3BucketHandler) RenameObject(ctx context.Context, srcBucket, srcObject, dstBucket, dstObject string) error {
+	// Build the real S3 keys using the userId prefix embedded in the bucket name
+	srcUserId := b.extractUserIdFromBucket(srcBucket)
+	dstUserId := b.extractUserIdFromBucket(dstBucket)
+
+	srcKey := srcObject
+	if srcUserId != "" {
+		srcKey = s3Key(srcUserId, srcObject)
+	}
+	dstKey := dstObject
+	if dstUserId != "" {
+		dstKey = s3Key(dstUserId, dstObject)
+	}
+
+	copySource := b.BaseBucketName + "/" + srcKey
+
+	_, err := b.Client.CopyObject(ctx, &s3.CopyObjectInput{
+		Bucket:     aws.String(b.BaseBucketName),
+		CopySource: aws.String(copySource),
+		Key:        aws.String(dstKey),
+	})
+	if err != nil {
+		return fmt.Errorf("RenameObject copy %q → %q: %w", srcKey, dstKey, err)
+	}
+
+	_, err = b.Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(b.BaseBucketName),
+		Key:    aws.String(srcKey),
+	})
+	if err != nil {
+		return fmt.Errorf("RenameObject delete src %q: %w", srcKey, err)
+	}
+
+	log.Printf("renamed object %s → %s", srcKey, dstKey)
+	return nil
+}
+
 func safeTime(t *time.Time) time.Time {
 	if t != nil {
 		return *t

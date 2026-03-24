@@ -1,7 +1,7 @@
 -- name: InsertFile :one
 INSERT INTO files (owner_google_id, file_name, file_type, size, md5_checksum, private_download_token)
 VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (owner_google_id, md5_checksum,file_name) DO NOTHING
+ON CONFLICT (owner_google_id, file_name) DO NOTHING
 RETURNING *;
 
 -- -- name: InsertFileReturningID :one
@@ -29,3 +29,23 @@ DELETE FROM files WHERE owner_google_id = $1 AND file_name = $2;
 
 -- name: GetFileFromChecksum :one
 SELECT id FROM files WHERE md5_checksum = $1;
+
+-- name: GetFilesByOwnerAndPathPrefix :many
+SELECT * FROM files
+WHERE owner_google_id = $1 AND starts_with(file_name, $2 || '/');
+
+-- name: GetAllFilePathsByOwner :many
+SELECT file_name FROM files WHERE owner_google_id = $1;
+
+-- name: RenameFilePath :exec
+UPDATE files SET file_name = $3
+WHERE owner_google_id = $1 AND file_name = $2;
+
+-- name: RenameFilesByFolderPrefix :exec
+UPDATE files
+SET file_name = $3 || '/' || SUBSTRING(file_name FROM LENGTH($2) + 2)
+WHERE owner_google_id = $1 AND starts_with(file_name, $2 || '/');
+
+-- name: DeleteFilesByFolderPrefix :execrows
+DELETE FROM files
+WHERE owner_google_id = $1 AND starts_with(file_name, $2 || '/');

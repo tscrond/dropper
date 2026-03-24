@@ -1,0 +1,2 @@
+-- No safe rollback for a deduplication; this is intentionally a no-op.
+-- Removed duplicate file rows cannot be deterministically restored.

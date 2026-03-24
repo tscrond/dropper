@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/tscrond/dropper/internal/pathutil"
 	"github.com/tscrond/dropper/internal/repo/sqlc"
 	"github.com/tscrond/dropper/internal/userdata"
 	pkg "github.com/tscrond/dropper/pkg"
@@ -101,7 +102,7 @@ func (s *APIServer) downloadThroughProxyPersonal(w http.ResponseWriter, r *http.
 	// Copy headers
 	maps.Copy(w.Header(), resp.Header)
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf("%s; filename=%q", disposition, bucketAndObjectRow.ObjectName))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("%s; filename=%q", disposition, pathutil.Basename(bucketAndObjectRow.ObjectName)))
 
 	w.WriteHeader(http.StatusOK)
 
@@ -198,7 +199,7 @@ func (s *APIServer) downloadThroughProxy(w http.ResponseWriter, r *http.Request)
 	// Copy headers
 	maps.Copy(w.Header(), resp.Header)
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf("%s; filename=%q", disposition, bucketAndObject.FileName))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("%s; filename=%q", disposition, pathutil.Basename(bucketAndObject.FileName)))
 
 	w.WriteHeader(http.StatusOK)
 

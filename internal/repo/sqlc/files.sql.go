@@ -132,7 +132,7 @@ func (q *Queries) GetFilesByOwner(ctx context.Context, ownerGoogleID sql.NullStr
 const insertFile = `-- name: InsertFile :one
 INSERT INTO files (owner_google_id, file_name, file_type, size, md5_checksum, private_download_token)
 VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (owner_google_id, md5_checksum,file_name) DO NOTHING
+ON CONFLICT (owner_google_id, file_name) DO NOTHING
 RETURNING id, owner_google_id, file_name, file_type, size, md5_checksum, private_download_token
 `
 
@@ -165,4 +165,123 @@ func (q *Queries) InsertFile(ctx context.Context, arg InsertFileParams) (File, e
 		&i.PrivateDownloadToken,
 	)
 	return i, err
+}
+
+const getFilesByOwnerAndPathPrefix = `-- name: GetFilesByOwnerAndPathPrefix :many
+SELECT id, owner_google_id, file_name, file_type, size, md5_checksum, private_download_token FROM files
+WHERE owner_google_id = $1 AND starts_with(file_name, $2 || '/')
+`
+
+type GetFilesByOwnerAndPathPrefixParams struct {
+	OwnerGoogleID sql.NullString `json:"owner_google_id"`
+	FolderPath    string         `json:"folder_path"`
+}
+
+func (q *Queries) GetFilesByOwnerAndPathPrefix(ctx context.Context, arg GetFilesByOwnerAndPathPrefixParams) ([]File, error) {
+	rows, err := q.db.QueryContext(ctx, getFilesByOwnerAndPathPrefix, arg.OwnerGoogleID, arg.FolderPath)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []File
+	for rows.Next() {
+		var i File
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerGoogleID,
+			&i.FileName,
+			&i.FileType,
+			&i.Size,
+			&i.Md5Checksum,
+			&i.PrivateDownloadToken,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllFilePathsByOwner = `-- name: GetAllFilePathsByOwner :many
+SELECT file_name FROM files WHERE owner_google_id = $1
+`
+
+func (q *Queries) GetAllFilePathsByOwner(ctx context.Context, ownerGoogleID sql.NullString) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getAllFilePathsByOwner, ownerGoogleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var fileName string
+		if err := rows.Scan(&fileName); err != nil {
+			return nil, err
+		}
+		items = append(items, fileName)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const renameFilePath = `-- name: RenameFilePath :exec
+UPDATE files SET file_name = $3
+WHERE owner_google_id = $1 AND file_name = $2
+`
+
+type RenameFilePathParams struct {
+	OwnerGoogleID sql.NullString `json:"owner_google_id"`
+	OldFileName   string         `json:"old_file_name"`
+	NewFileName   string         `json:"new_file_name"`
+}
+
+func (q *Queries) RenameFilePath(ctx context.Context, arg RenameFilePathParams) error {
+	_, err := q.db.ExecContext(ctx, renameFilePath, arg.OwnerGoogleID, arg.OldFileName, arg.NewFileName)
+	return err
+}
+
+const renameFilesByFolderPrefix = `-- name: RenameFilesByFolderPrefix :exec
+UPDATE files
+SET file_name = $3 || '/' || SUBSTRING(file_name FROM LENGTH($2) + 2)
+WHERE owner_google_id = $1 AND starts_with(file_name, $2 || '/')
+`
+
+type RenameFilesByFolderPrefixParams struct {
+	OwnerGoogleID sql.NullString `json:"owner_google_id"`
+	OldFolderPath string         `json:"old_folder_path"`
+	NewFolderPath string         `json:"new_folder_path"`
+}
+
+func (q *Queries) RenameFilesByFolderPrefix(ctx context.Context, arg RenameFilesByFolderPrefixParams) error {
+	_, err := q.db.ExecContext(ctx, renameFilesByFolderPrefix, arg.OwnerGoogleID, arg.OldFolderPath, arg.NewFolderPath)
+	return err
+}
+
+const deleteFilesByFolderPrefix = `-- name: DeleteFilesByFolderPrefix :execrows
+DELETE FROM files
+WHERE owner_google_id = $1 AND starts_with(file_name, $2 || '/')
+`
+
+type DeleteFilesByFolderPrefixParams struct {
+	OwnerGoogleID sql.NullString `json:"owner_google_id"`
+	FolderPath    string         `json:"folder_path"`
+}
+
+func (q *Queries) DeleteFilesByFolderPrefix(ctx context.Context, arg DeleteFilesByFolderPrefixParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteFilesByFolderPrefix, arg.OwnerGoogleID, arg.FolderPath)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
