@@ -18,6 +18,14 @@ func GetUserBucketName(bucketBaseName, userID string) string {
 	return fmt.Sprintf("%s-%s", bucketBaseName, userID)
 }
 
+func ExtractUserIdFromBucketName(baseName, compositeName string) string {
+	prefix := baseName + "-"
+	if len(compositeName) > len(prefix) && compositeName[:len(prefix)] == prefix {
+		return compositeName[len(prefix):]
+	}
+	return ""
+}
+
 func LoadServiceAccount(path string) (email string, privateKey []byte, err error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

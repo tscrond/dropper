@@ -48,8 +48,10 @@ func main() {
 	}
 	defer repository.Close()
 
-	// for now - static GCS provider - later implementing min.io for self hosting
-	storageProvider := "gcs"
+	storageProvider := os.Getenv("STORAGE_PROVIDER")
+	if storageProvider == "" {
+		storageProvider = "gcs"
+	}
 
 	bucketHandler, err := InitObjectStorage(backendEndpoint, storageProvider, repository)
 	if err != nil {

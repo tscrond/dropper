@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/tscrond/dropper/internal/cloud_storage/gcs"
+	s3handler "github.com/tscrond/dropper/internal/cloud_storage/s3"
 	"github.com/tscrond/dropper/internal/cloud_storage/types"
 	"github.com/tscrond/dropper/internal/repo"
 )
@@ -17,6 +18,11 @@ func NewStorageProvider(provider string, repository *repo.Repository) (types.Obj
 		googleProjectID := os.Getenv("GOOGLE_PROJECT_ID")
 
 		return gcs.NewGCSBucketHandler(svcaccountPath, bucketName, googleProjectID, repository)
+	case "s3":
+		bucketName := os.Getenv("S3_BUCKET_NAME")
+		region := os.Getenv("AWS_REGION")
+
+		return s3handler.NewS3BucketHandler(bucketName, region, repository)
 	case "minio":
 		return nil, errors.New("not implemented")
 	default:
