@@ -1,8 +1,10 @@
 package api
 
 import (
+	"database/sql"
 	"net/http"
 
+	"github.com/tscrond/dropper/internal/repo/sqlc"
 	"github.com/tscrond/dropper/internal/userdata"
 	"github.com/tscrond/dropper/pkg"
 )
@@ -68,9 +70,18 @@ func (s *APIServer) getUserPrivateFileByName(w http.ResponseWriter, r *http.Requ
 
 	ctx := r.Context()
 
+	userData, ok := ctx.Value(userdata.AuthorizedUserContextKey).(*userdata.AuthorizedUserInfo)
+	if !ok {
+		pkg.WriteJSONResponse(w, http.StatusForbidden, "access_denied", "")
+		return
+	}
+
 	fileName := r.URL.Query().Get("file")
 
-	downloadToken, err := s.repository.Queries.GetPrivateDownloadTokenByFileName(ctx, fileName)
+	downloadToken, err := s.repository.Queries.GetPrivateDownloadTokenByFileName(ctx, sqlc.GetPrivateDownloadTokenByFileNameParams{
+		FileName:      fileName,
+		OwnerGoogleID: sql.NullString{Valid: true, String: userData.Id},
+	})
 	if err != nil {
 		pkg.WriteJSONResponse(w, http.StatusInternalServerError, "internal_error", "")
 		return
